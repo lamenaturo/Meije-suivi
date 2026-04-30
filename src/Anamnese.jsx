@@ -98,8 +98,12 @@ const THYROIDE_SYMPTOMS = [
   "Vit. A basse / bêtacarotène normale", "Moral up and down (dépression)"
 ];
 
+
 export default function Anamnese({ user, onDone }) {
-  const [step, setStep] = useState(0);
+  const STORAGE_KEY = "anamnese_" + user.uid;
+  const STEP_KEY = "anamnese_step_" + user.uid;
+  const [step, setStep] = useState(() => { try { return parseInt(sessionStorage.getItem(STEP_KEY) || "0"); } catch { return 0; } });
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -167,7 +171,7 @@ export default function Anamnese({ user, onDone }) {
     infosSup: "", questions: "",
   });
 
-  const update = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const update = (key, val) => { setForm(f => { const nf = { ...f, [key]: val }; try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nf)); } catch {} return nf; }); };
 
   const thyroideScore = form.symptomesThyroide.length;
   const thyroideInterpretation = thyroideScore <= 5 ? "Risque faible" :
@@ -206,6 +210,7 @@ export default function Anamnese({ user, onDone }) {
     });
     setSaved(true);
     setSaving(false);
+    try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STEP_KEY); } catch {}
     setTimeout(() => onDone(), 2000);
   };
 
@@ -546,8 +551,12 @@ export default function Anamnese({ user, onDone }) {
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
         <div style={{ marginBottom: 28 }}>
           <div style={{ color: C.ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>meije.naturo</div>
-          <h1 style={{ fontFamily: "serif", fontSize: 24, color: C.tx, fontWeight: 700, marginBottom: 4 }}>Questionnaire de santé</h1>
-          <p style={{ color: C.tm, fontSize: 13 }}>Merci de remplir ce questionnaire avant notre rendez-vous. Vos réponses restent strictement confidentielles.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <button onClick={onDone} style={{ background: "none", border: "1px solid " + C.bd, borderRadius: 8, padding: "6px 14px", color: C.tm, cursor: "pointer", fontFamily: "sans-serif", fontSize: 12 }}>Retour</button>
+            <h1 style={{ fontFamily: "serif", fontSize: 24, color: C.tx, fontWeight: 700 }}>Questionnaire de sante</h1>
+          </div>
+          <p style={{ color: C.tm, fontSize: 13 }}>Merci de remplir ce questionnaire avant notre rendez-vous. Vos reponses restent strictement confidentielles.</p>
+          <div style={{ background: C.sf, borderRadius: 8, padding: "8px 14px", marginTop: 10, color: C.ac, fontSize: 12 }}>Vos reponses sont sauvegardees automatiquement. Vous pouvez revenir plus tard sans perdre vos donnees.</div>
         </div>
 
         {/* Progress */}
@@ -564,11 +573,11 @@ export default function Anamnese({ user, onDone }) {
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, paddingTop: 20, borderTop: "1px solid " + C.bd }}>
           {step > 0
-            ? <button onClick={() => setStep(s => s - 1)} style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid " + C.bd, background: C.sf, color: C.tm, cursor: "pointer", fontFamily: "sans-serif", fontSize: 14 }}>Précédent</button>
+            ? <button onClick={() => { setStep(s => { const ns = s - 1; try { sessionStorage.setItem(STEP_KEY, ns); } catch {} return ns; }); window.scrollTo(0,0); }} style={{ padding: "10px 20px", borderRadius: 10, border: "1px solid " + C.bd, background: C.sf, color: C.tm, cursor: "pointer", fontFamily: "sans-serif", fontSize: 14 }}>Precedent</button>
             : <div />
           }
           {step < STEPS.length - 1
-            ? <button onClick={() => { setStep(s => s + 1); window.scrollTo(0, 0); }} style={{ padding: "10px 24px", borderRadius: 10, border: "none", background: C.ac, color: "#0c0f0e", cursor: "pointer", fontFamily: "sans-serif", fontWeight: 600, fontSize: 14 }}>Suivant</button>
+            ? <button onClick={() => { setStep(s => { const ns = s + 1; try { sessionStorage.setItem(STEP_KEY, ns); } catch {} return ns; }); window.scrollTo(0,0); }} style={{ padding: "10px 24px", borderRadius: 10, border: "none", background: C.ac, color: "#0c0f0e", cursor: "pointer", fontFamily: "sans-serif", fontWeight: 600, fontSize: 14 }}>Suivant</button>
             : null
           }
         </div>
