@@ -214,7 +214,7 @@ function Cliente({ user, onLogout }) {
   const hasAnamnese = anamneses.length > 0;
 
   if (loading) return <div style={{ color: td, padding: 40, textAlign: "center" }}>Chargement...</div>;
-  if (view === "anamnese") return <Anamnese user={user} onDone={() => setView("home")} />;
+  if (view === "anamnese") return <Anamnese user={user} onDone={() => setView("home")} readonly={hasAnamnese} existingData={anamneses[0]} />;
 
   return (
     <div style={{ minHeight: "100vh", background: bg, padding: "28px 20px", fontFamily: "sans-serif" }}>
@@ -374,6 +374,37 @@ function Cliente({ user, onLogout }) {
                   }} style={{ ...btn("primary"), marginTop: 12, width: "100%" }}>Envoyer a Meije</button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {view === "documents" && (
+          <div>
+            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
+            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 6 }}>Mes documents</h2>
+            <p style={{ color: tm, fontSize: 13, marginBottom: 20 }}>Upload de bilans, ordonnances, resultats de labo</p>
+            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 16 }}>
+              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
+              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
+              {docs.length > 0 && docs.map((d, i) => (
+                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "documents" && (
+          <div>
+            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
+            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 20 }}>Mes documents</h2>
+            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 16 }}>
+              <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Ajouter des documents</div>
+              <p style={{ color: td, fontSize: 12, marginBottom: 10 }}>Bilans sanguins, ordonnances, photos... (photos ou PDF)</p>
+              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
+              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
+              {docs.map((d, i) => (
+                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
+              ))}
             </div>
           </div>
         )}
