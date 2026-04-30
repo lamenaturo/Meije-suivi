@@ -397,11 +397,12 @@ function Cliente({ user, onLogout }) {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       {["Pris régulièrement", "Pris irrégulièrement", "Pas pris"].map(opt => (
-                        <button key={opt} onClick={() => setComplementsPris(p => ({ ...p, [c]: opt }))} style={{ padding: "6px 12px", borderRadius: 20, border: "2px solid " + (complementsPris[c] === opt ? (opt === "Pris régulièrement" ? "#7BAF8C" : opt === "Pris irrégulièrement" ? "#C8B86A" : "#C4614A") : bd), background: complementsPris[c] === opt ? "rgba(255,255,255,0.06)" : "transparent", color: complementsPris[c] === opt ? tx : td, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>{opt}</button>
+                        <button key={opt} onClick={() => setComplementsPris(p => ({ ...p, [nom]: opt }))} style={{ padding: "6px 12px", borderRadius: 20, border: "2px solid " + (complementsPris[nom] === opt ? (opt === "Pris régulièrement" ? "#7BAF8C" : opt === "Pris irrégulièrement" ? "#C8B86A" : "#C4614A") : bd), background: complementsPris[nom] === opt ? "rgba(255,255,255,0.06)" : "transparent", color: complementsPris[nom] === opt ? tx : td, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>{opt}</button>
                       ))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
