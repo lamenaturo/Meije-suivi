@@ -12,7 +12,7 @@ query, orderBy, where, onSnapshot
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const PRATICIENNE_EMAIL = "meije@naturo.fr";
+const PRATICIENNE_EMAIL = "lamenaturo@gmail.com";
 const TRACKING_ITEMS = [
 { key: "complements", label: "Mes compléments", icon: " { key: "sommeil", label: "Sommeil", icon: " { key: "cycle", label: "Cycle & hormones", icon: " { key: "digestion", label: "Digestion", icon: " { key: "energie", label: "Énergie", icon: " { key: "douleurs", label: "Douleurs", icon: " { key: "humeur", label: "Humeur", icon: " { key: "alimentation", label: "Alimentation", icon: " ", question: "Tu as pris tes compl
 ", question: "Comment tu as dormi ?" },
