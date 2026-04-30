@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
-import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Anamnese from "./Anamnese";
 
 const PRATICIENNE_EMAIL = "lamenaturo@gmail.com";
+const CLOUD_NAME = "di45b4ymc";
+const UPLOAD_PRESET = "meije_naturo";
+
+const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je ne sais pas"];
 
 const TI = [
-  { key: "complements", label: "Complements", question: "Tu as pris tes complements cette semaine ?" },
   { key: "sommeil", label: "Sommeil", question: "Comment tu as dormi ?" },
   { key: "cycle", label: "Cycle", question: "Ou en es-tu dans ton cycle ?" },
   { key: "digestion", label: "Digestion", question: "Comment etait ta digestion ?" },
@@ -80,7 +83,7 @@ function Auth({ onLogin }) {
     if (!email || !password || !prenom) { setError("Remplis tous les champs."); setLoading(false); return; }
     try {
       const c = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", c.user.uid), { prenom, email, role: "cliente", createdAt: new Date().toISOString() });
+      await setDoc(doc(db, "users", c.user.uid), { prenom, email, role: "cliente", createdAt: new Date().toISOString(), complements: [] });
       onLogin({ uid: c.user.uid, email, prenom, role: "cliente" });
     } catch (e) {
       if (e.code === "auth/email-already-in-use") setError("Compte deja existant.");
@@ -140,8 +143,17 @@ function Cliente({ user, onLogout }) {
   const [entries, setEntries] = useState([]);
   const [messages, setMessages] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
+  const [complements, setComplements] = useState([]);
   const [view, setView] = useState("home");
-  const [form, setForm] = useState({ scores: {}, humeur: "", confidences: "" });
+  const [scores, setScores] = useState({});
+  const [notes, setNotes] = useState({});
+  const [cyclePhase, setCyclePhase] = useState("");
+  const [cycleNote, setCycleNote] = useState("");
+  const [complementsPris, setComplementsPris] = useState({});
+  const [humeur, setHumeur] = useState("");
+  const [confidences, setConfidences] = useState("");
+  const [docs, setDocs] = useState([]);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -152,7 +164,9 @@ function Cliente({ user, onLogout }) {
     const u2 = onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", user.uid), orderBy("date", "asc"));
     const u3 = onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    return () => { u(); u2(); u3(); };
+    const userRef = doc(db, "users", user.uid);
+    const u4 = onSnapshot(userRef, d => { if (d.data() && d.data().complements) setComplements(d.data().complements); });
+    return () => { u(); u2(); u3(); u4(); };
   }, [user.uid]);
 
   const wk = () => {
@@ -163,9 +177,33 @@ function Cliente({ user, onLogout }) {
     return "Semaine du " + s.getDate() + " " + mois[s.getMonth()];
   };
 
+  const uploadDocs = async (files) => {
+    setUploadingDocs(true);
+    const uploaded = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "meije-naturo/suivis");
+      try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/auto/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
+      } catch (e) { console.error(e); }
+    }
+    setDocs(prev => [...prev, ...uploaded]);
+    setUploadingDocs(false);
+  };
+
   const submit = async () => {
-    await addDoc(collection(db, "entries"), { userUid: user.uid, userEmail: user.email, userPrenom: user.prenom, weekLabel: wk(), date: new Date().toISOString(), scores: form.scores, humeur_libre: form.humeur, confidences: form.confidences });
-    setForm({ scores: {}, humeur: "", confidences: "" });
+    await addDoc(collection(db, "entries"), {
+      userUid: user.uid, userEmail: user.email, userPrenom: user.prenom,
+      weekLabel: wk(), date: new Date().toISOString(),
+      scores, notes, cyclePhase, cycleNote,
+      complementsPris, humeur_libre: humeur, confidences, documents: docs,
+    });
+    setScores({}); setNotes({}); setCyclePhase(""); setCycleNote("");
+    setComplementsPris({}); setHumeur(""); setConfidences(""); setDocs([]);
     setSaved(true);
     setTimeout(() => { setSaved(false); setView("home"); }, 1800);
   };
@@ -221,11 +259,6 @@ function Cliente({ user, onLogout }) {
                 <span style={{ fontSize: 20 }}>{">"}</span>
               </button>
             )}
-            {hasAnamnese && (
-              <div style={{ background: sf, borderRadius: 14, padding: "14px 22px", border: "1px solid " + bd }}>
-                <div style={{ color: ac, fontSize: 13 }}>Questionnaire de sante envoye</div>
-              </div>
-            )}
           </div>
         )}
 
@@ -234,24 +267,68 @@ function Cliente({ user, onLogout }) {
             <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
             <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 6 }}>Ton suivi de la semaine</h2>
             <p style={{ color: tm, fontSize: 13, marginBottom: 24 }}>{wk()}</p>
+
+            {/* Complements */}
+            {complements.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Tes complements cette semaine</div>
+                {complements.map((c, i) => (
+                  <div key={i} style={{ marginBottom: 10 }}>
+                    <div style={{ color: tm, fontSize: 13, marginBottom: 6 }}>{c}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {["Pris regulierement", "Pris irregulierement", "Pas pris"].map(opt => (
+                        <button key={opt} onClick={() => setComplementsPris(p => ({ ...p, [c]: opt }))} style={{ padding: "6px 12px", borderRadius: 20, border: "2px solid " + (complementsPris[c] === opt ? (opt === "Pris regulierement" ? "#7BAF8C" : opt === "Pris irregulierement" ? "#C8B86A" : "#C4614A") : bd), background: complementsPris[c] === opt ? "rgba(255,255,255,0.06)" : "transparent", color: complementsPris[c] === opt ? tx : td, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>{opt}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Cycle */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>Ou en es-tu dans ton cycle ?</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                {PHASES_CYCLE.map(p => (
+                  <button key={p} onClick={() => setCyclePhase(p)} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (cyclePhase === p ? ac : bd), background: cyclePhase === p ? ad : "transparent", color: cyclePhase === p ? ac : tm, cursor: "pointer", fontSize: 13, fontFamily: "sans-serif" }}>{p}</button>
+                ))}
+              </div>
+              <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Precisions sur ton cycle cette semaine (douleurs, duree des regles, SPM...)" rows={2} style={{ ...iS, resize: "vertical" }} />
+            </div>
+
+            {/* Autres questions avec score + note */}
             {TI.map(item => (
-              <div key={item.key} style={{ marginBottom: 20 }}>
+              <div key={item.key} style={{ marginBottom: 24 }}>
                 <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>{item.question}</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                   {SC.map(s => (
-                    <button key={s.v} onClick={() => setForm(f => ({ ...f, scores: { ...f.scores, [item.key]: s.v } }))} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (form.scores[item.key] === s.v ? s.color : bd), background: form.scores[item.key] === s.v ? s.color + "22" : "transparent", color: form.scores[item.key] === s.v ? s.color : tm, cursor: "pointer", fontSize: 13, fontWeight: form.scores[item.key] === s.v ? 700 : 400, fontFamily: "sans-serif" }}>{s.v} - {s.label}</button>
+                    <button key={s.v} onClick={() => setScores(p => ({ ...p, [item.key]: s.v }))} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (scores[item.key] === s.v ? s.color : bd), background: scores[item.key] === s.v ? s.color + "22" : "transparent", color: scores[item.key] === s.v ? s.color : tm, cursor: "pointer", fontSize: 13, fontWeight: scores[item.key] === s.v ? 700 : 400, fontFamily: "sans-serif" }}>{s.v} - {s.label}</button>
                   ))}
                 </div>
+                <textarea value={notes[item.key] || ""} onChange={e => setNotes(p => ({ ...p, [item.key]: e.target.value }))} placeholder={"Precisions sur " + item.label.toLowerCase() + "..."} rows={2} style={{ ...iS, resize: "vertical" }} />
               </div>
             ))}
+
             <div style={{ marginBottom: 16 }}>
               <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Comment tu te sens globalement ?</label>
-              <textarea value={form.humeur} onChange={e => setForm(f => ({ ...f, humeur: e.target.value }))} placeholder="Fatiguee, stressee, plutot bien..." rows={3} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={humeur} onChange={e => setHumeur(e.target.value)} placeholder="Fatiguee, stressee, plutot bien..." rows={3} style={{ ...iS, resize: "vertical" }} />
             </div>
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Confidences pour Meije</label>
-              <textarea value={form.confidences} onChange={e => setForm(f => ({ ...f, confidences: e.target.value }))} placeholder="Tout ce que tu veux partager..." rows={4} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Tout ce que tu veux partager..." rows={4} style={{ ...iS, resize: "vertical" }} />
             </div>
+
+            {/* Upload documents */}
+            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 24 }}>
+              <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Ajouter des documents</div>
+              <p style={{ color: td, fontSize: 12, marginBottom: 10 }}>Resultats de labo, ordonnances, photos... (photos ou PDF)</p>
+              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
+              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
+              {docs.length > 0 && docs.map((d, i) => (
+                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
+              ))}
+            </div>
+
             {saved ? <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 10, padding: 14, color: ac, fontWeight: 600, textAlign: "center" }}>Suivi enregistre !</div> : <button onClick={submit} style={{ ...btn("primary"), width: "100%" }}>Envoyer a Meije</button>}
           </div>
         )}
@@ -272,7 +349,8 @@ function Cliente({ user, onLogout }) {
                     </div>
                     {avg && <SD value={Math.round(avg)} size={40} />}
                   </div>
-                  {e.confidences && <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}><div style={{ color: td, fontSize: 11, marginBottom: 4 }}>Confidences</div><p style={{ color: tm, fontSize: 13, lineHeight: 1.6 }}>{e.confidences}</p></div>}
+                  {e.cyclePhase && <div style={{ color: ac, fontSize: 13, marginBottom: 8 }}>Phase : {e.cyclePhase}</div>}
+                  {e.confidences && <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}><p style={{ color: tm, fontSize: 13, lineHeight: 1.6 }}>{e.confidences}</p></div>}
                 </div>
               );
             })}
@@ -286,6 +364,7 @@ function Cliente({ user, onLogout }) {
 function Praticienne({ user, onLogout }) {
   const [clients, setClients] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [clientData, setClientData] = useState(null);
   const [entries, setEntries] = useState([]);
   const [messages, setMessages] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
@@ -293,6 +372,8 @@ function Praticienne({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("suivi");
+  const [newComplement, setNewComplement] = useState("");
+  const [savingComplements, setSavingComplements] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "users"), where("role", "==", "cliente"));
@@ -302,12 +383,29 @@ function Praticienne({ user, onLogout }) {
 
   const select = c => {
     setSelected(c); setNewMsg(""); setActiveTab("suivi");
+    const userRef = doc(db, "users", c.uid);
+    onSnapshot(userRef, d => setClientData(d.data()));
     const q = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q, s => setEntries(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q2 = query(collection(db, "messages"), where("toUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  };
+
+  const addComplement = async () => {
+    if (!newComplement.trim()) return;
+    setSavingComplements(true);
+    const current = clientData && clientData.complements ? clientData.complements : [];
+    await updateDoc(doc(db, "users", selected.uid), { complements: [...current, newComplement.trim()] });
+    setNewComplement("");
+    setSavingComplements(false);
+  };
+
+  const removeComplement = async (idx) => {
+    const current = clientData && clientData.complements ? clientData.complements : [];
+    const updated = current.filter((_, i) => i !== idx);
+    await updateDoc(doc(db, "users", selected.uid), { complements: updated });
   };
 
   const send = async () => {
@@ -351,12 +449,30 @@ function Praticienne({ user, onLogout }) {
             <h2 style={{ fontFamily: "serif", fontSize: 22, color: tx, fontWeight: 700, marginBottom: 4 }}>{selected.prenom}</h2>
             <div style={{ color: td, fontSize: 13, marginBottom: 20 }}>{selected.email}</div>
 
-            {/* Tabs */}
-            <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 24 }}>
-              {[["suivi", "Suivis semaine"], ["anamnese", "Questionnaire sante"], ["message", "Message"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? (key === "message" ? wd : ad) : "transparent", color: activeTab === key ? (key === "message" ? wm : ac) : td }}>{label}</button>
+            <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 24, flexWrap: "wrap" }}>
+              {[["suivi", "Suivis"], ["complements", "Complements"], ["anamnese", "Questionnaire"], ["message", "Message"]].map(([key, label]) => (
+                <button key={key} onClick={() => setActiveTab(key)} style={{ flex: 1, minWidth: 80, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? (key === "message" ? wd : ad) : "transparent", color: activeTab === key ? (key === "message" ? wm : ac) : td }}>{label}</button>
               ))}
             </div>
+
+            {activeTab === "complements" && (
+              <div>
+                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Liste des complements de {selected.prenom}</div>
+                {clientData && clientData.complements && clientData.complements.length > 0
+                  ? clientData.complements.map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: sf, borderRadius: 10, padding: "12px 16px", marginBottom: 8 }}>
+                      <span style={{ color: tx, fontSize: 14 }}>{c}</span>
+                      <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 16 }}>x</button>
+                    </div>
+                  ))
+                  : <div style={{ color: td, fontSize: 14, marginBottom: 16 }}>Aucun complement ajoute pour l instant.</div>
+                }
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <input value={newComplement} onChange={e => setNewComplement(e.target.value)} onKeyDown={e => e.key === "Enter" && addComplement()} placeholder="Ajouter un complement (ex: Magnesium 300mg/j)" style={{ ...iS, flex: 1 }} />
+                  <button onClick={addComplement} disabled={savingComplements} style={{ ...btn("primary"), padding: "11px 16px", flexShrink: 0 }}>Ajouter</button>
+                </div>
+              </div>
+            )}
 
             {activeTab === "suivi" && (
               <div>
@@ -374,19 +490,54 @@ function Praticienne({ user, onLogout }) {
                           </div>
                           {avg && <SD value={Math.round(avg)} size={40} />}
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8, marginBottom: 12 }}>
-                          {TI.filter(i => e.scores && e.scores[i.key]).map(i => {
-                            const sc = SC.find(x => x.v === e.scores[i.key]);
-                            return (
-                              <div key={i.key} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <span style={{ fontSize: 12, color: tm }}>{i.label}</span>
-                                <span style={{ fontSize: 11, color: sc ? sc.color : td, fontWeight: 700 }}>{sc ? sc.label : "-"}</span>
+
+                        {/* Complements */}
+                        {e.complementsPris && Object.keys(e.complementsPris).length > 0 && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Complements</div>
+                            {Object.entries(e.complementsPris).map(([comp, statut]) => (
+                              <div key={comp} style={{ display: "flex", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "6px 12px", marginBottom: 4 }}>
+                                <span style={{ color: tm, fontSize: 13 }}>{comp}</span>
+                                <span style={{ fontSize: 12, color: statut === "Pris regulierement" ? "#7BAF8C" : statut === "Pris irregulierement" ? "#C8B86A" : "#C4614A", fontWeight: 600 }}>{statut}</span>
                               </div>
-                            );
-                          })}
-                        </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Cycle */}
+                        {e.cyclePhase && (
+                          <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+                            <div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Phase du cycle : {e.cyclePhase}</div>
+                            {e.cycleNote && <p style={{ color: tm, fontSize: 13 }}>{e.cycleNote}</p>}
+                          </div>
+                        )}
+
+                        {/* Scores + notes */}
+                        {TI.filter(i => e.scores && e.scores[i.key]).map(i => {
+                          const sc = SC.find(x => x.v === e.scores[i.key]);
+                          return (
+                            <div key={i.key} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: e.notes && e.notes[i.key] ? 4 : 0 }}>
+                                <span style={{ color: tm, fontSize: 13 }}>{i.label}</span>
+                                <span style={{ fontSize: 12, color: sc ? sc.color : td, fontWeight: 700 }}>{sc ? sc.label : "-"}</span>
+                              </div>
+                              {e.notes && e.notes[i.key] && <p style={{ color: td, fontSize: 12, fontStyle: "italic" }}>{e.notes[i.key]}</p>}
+                            </div>
+                          );
+                        })}
+
                         {e.humeur_libre && <div style={{ background: "rgba(126,200,160,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}><div style={{ color: ac, fontSize: 11, marginBottom: 4 }}>Humeur</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.humeur_libre}</p></div>}
-                        {e.confidences && <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px" }}><div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Confidences</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.confidences}</p></div>}
+                        {e.confidences && <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}><div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Confidences</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.confidences}</p></div>}
+
+                        {/* Documents */}
+                        {e.documents && e.documents.length > 0 && (
+                          <div>
+                            <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Documents</div>
+                            {e.documents.map((d, i) => (
+                              <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: ad, border: "1px solid " + ab, borderRadius: 8, padding: "6px 12px", color: ac, fontSize: 12, textDecoration: "none", marginRight: 8, marginBottom: 6 }}>{d.name}</a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -397,58 +548,32 @@ function Praticienne({ user, onLogout }) {
             {activeTab === "anamnese" && (
               <div>
                 {anamneses.length === 0
-                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore rempli le questionnaire de sante.</div>
+                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore rempli le questionnaire.</div>
                   : anamneses.map(a => (
                     <div key={a.id}>
                       <div style={{ color: td, fontSize: 12, marginBottom: 16 }}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
-
-                      {/* Score thyroide */}
                       <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 12, padding: 16, marginBottom: 16 }}>
                         <div style={{ color: ac, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Score thyroide : {a.thyroideScore} / 23</div>
                         <div style={{ color: tm, fontSize: 13 }}>{a.thyroideInterpretation}</div>
                       </div>
-
-                      {/* Bilans uploades */}
                       {a.bilans && a.bilans.length > 0 && (
                         <div style={{ marginBottom: 20 }}>
-                          <div style={{ color: wm, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Bilans uploades ({a.bilans.length})</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                            {a.bilans.map((b, i) => (
-                              <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, background: wd, border: "1px solid rgba(200,149,108,0.2)", borderRadius: 10, padding: "10px 14px", color: wm, fontSize: 13, textDecoration: "none" }}>
-                                {b.type && b.type.includes("image") ? "Image" : "PDF"} - {b.name}
-                              </a>
-                            ))}
-                          </div>
+                          <div style={{ color: wm, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Bilans uploades</div>
+                          {a.bilans.map((b, i) => (
+                            <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: wd, border: "1px solid rgba(200,149,108,0.2)", borderRadius: 10, padding: "8px 14px", color: wm, fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 8 }}>{b.name}</a>
+                          ))}
                         </div>
                       )}
-
-                      {/* Reponses par section */}
-                      {a.form && Object.entries({
-                        "Motif de consultation": { problematique: "Problematique", dureeProbleme: "Duree", impactVieQuotidienne: "Impact vie quotidienne", objectifs3mois: "Objectifs 3 mois" },
-                        "Informations generales": { nom: "Nom", age: "Age", taille: "Taille", poids: "Poids", profession: "Profession", situationFamiliale: "Situation familiale" },
-                        "Sommeil": { heureCoucher: "Coucher", heureLever: "Lever", nbHeuresSommeil: "Heures de sommeil", reveil: "Au reveil" },
-                        "Stress": { niveauStress: "Niveau stress /10", sourcesStress: "Sources de stress", anxiete: "Anxiete" },
-                        "Hormones": { ageRegles: "Age 1eres regles", dureeCycle: "Duree cycle", dureeRegles: "Duree regles", abondanceRegles: "Abondance", intensiteDouleurs: "Intensite douleurs /10", descriptionDouleurs: "Description douleurs" },
-                        "Digestion": { frequenceSelles: "Frequence selles", momentSymptomes: "Moment symptomes", alimentsCauses: "Aliments causes" },
-                        "Alimentation": { nbRepas: "Nb repas/j", petitDejeunerType: "Petit-dejeuner", dejeunerType: "Dejeuner", dinerType: "Diner", quantiteEau: "Eau/jour" },
-                        "Vision & motivation": { vision6mois: "Vision dans 6 mois", motivation: "Motivation /10", attentes: "Attentes", infosSup: "Infos supplementaires" }
-                      }).map(([sectionTitle, fields]) => (
-                        <div key={sectionTitle} style={{ marginBottom: 16 }}>
-                          <div style={{ color: ac, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{sectionTitle}</div>
-                          <div style={{ background: sf, borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-                            {Object.entries(fields).map(([key, label]) => {
-                              const val = a.form[key];
-                              if (!val && val !== 0) return null;
-                              return (
-                                <div key={key} style={{ display: "flex", gap: 8 }}>
-                                  <span style={{ color: td, fontSize: 12, minWidth: 140, flexShrink: 0 }}>{label}</span>
-                                  <span style={{ color: tm, fontSize: 13 }}>{typeof val === "object" ? (Array.isArray(val) ? val.join(", ") : JSON.stringify(val)) : val}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                      {a.form && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {[["Problematique principale", a.form.problematique], ["Duree du probleme", a.form.dureeProbleme], ["Impact vie quotidienne", a.form.impactVieQuotidienne], ["Objectifs 3 mois", a.form.objectifs3mois], ["Antecedents medicaux", a.form.maladiesChroniques], ["Medicaments", a.form.medicaments], ["Complements actuels", a.form.complementsActuels], ["Heure coucher / lever", a.form.heureCoucher && (a.form.heureCoucher + " / " + a.form.heureLever)], ["Qualite sommeil", a.form.qualiteSommeil && (a.form.qualiteSommeil + " / 10")], ["Niveau stress", a.form.niveauStress && (a.form.niveauStress + " / 10")], ["Sources de stress", a.form.sourcesStress], ["Age regles", a.form.ageRegles], ["Duree cycle / regles", a.form.dureeCycle && (a.form.dureeCycle + "j / " + a.form.dureeRegles + "j")], ["Intensite douleurs", a.form.intensiteDouleurs && (a.form.intensiteDouleurs + " / 10")], ["Description douleurs", a.form.descriptionDouleurs], ["Alimentation", a.form.petitDejeunerType && ("Pdej: " + a.form.petitDejeunerType + " | Dej: " + a.form.dejeunerType + " | Din: " + a.form.dinerType)], ["Eau/jour", a.form.quantiteEau], ["Motivation", a.form.motivation && (a.form.motivation + " / 10")], ["Attentes", a.form.attentes], ["Infos supplementaires", a.form.infosSup]].filter(([_, v]) => v).map(([label, val]) => (
+                            <div key={label} style={{ display: "flex", gap: 12, background: sf, borderRadius: 8, padding: "10px 14px" }}>
+                              <span style={{ color: td, fontSize: 12, minWidth: 160, flexShrink: 0 }}>{label}</span>
+                              <span style={{ color: tm, fontSize: 13, lineHeight: 1.5 }}>{val}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   ))
                 }
@@ -500,4 +625,3 @@ export default function App() {
     </>
   );
 }
-
