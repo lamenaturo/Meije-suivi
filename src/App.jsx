@@ -13,9 +13,9 @@ const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je
 const TI = [
   { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment as-tu dormi cette semaine ?" },
   { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digéré cette semaine ?" },
-  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau énergie cette semaine ?" },
-  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens niveau douleurs cette semaine ?" },
-  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens émotionnellement cette semaine ?" },
+  { key: "energie", label: "Énergie", icon: "⚡", question: "Comment te sens-tu niveau énergie cette semaine ?" },
+  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment te sens-tu au niveau des douleurs cette semaine ?" },
+  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment te sens-tu émotionnellement cette semaine ?" },
   { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mangé cette semaine ?" },
 ];
 
