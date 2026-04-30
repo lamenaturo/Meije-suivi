@@ -336,20 +336,15 @@ function Cliente({ user, onLogout }) {
               <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Un detail, une question, quelque chose qui s est passe cette semaine..." rows={4} style={{ ...iS, resize: "vertical" }} />
             </div>
 
-            {/* Upload documents */}
-            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 24 }}>
-              <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Ajouter des documents</div>
-              <p style={{ color: td, fontSize: 12, marginBottom: 10 }}>Resultats de labo, ordonnances, photos... (photos ou PDF)</p>
-              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
-              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
-              {docs.length > 0 && docs.map((d, i) => (
-                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
-              ))}
-            </div>
-
             {saved ? <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 10, padding: 14, color: ac, fontWeight: 600, textAlign: "center" }}>Suivi enregistre !</div> : <button onClick={submit} style={{ ...btn("primary"), width: "100%" }}>Envoyer a Meije</button>}
           </div>
         )}
+
+        
+
+        
+
+        
 
         {view === "documents" && (
           <div>
@@ -378,38 +373,7 @@ function Cliente({ user, onLogout }) {
           </div>
         )}
 
-        {view === "documents" && (
-          <div>
-            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
-            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 6 }}>Mes documents</h2>
-            <p style={{ color: tm, fontSize: 13, marginBottom: 20 }}>Upload de bilans, ordonnances, resultats de labo</p>
-            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 16 }}>
-              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
-              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
-              {docs.length > 0 && docs.map((d, i) => (
-                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "documents" && (
-          <div>
-            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
-            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 20 }}>Mes documents</h2>
-            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 16, marginBottom: 16 }}>
-              <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Ajouter des documents</div>
-              <p style={{ color: td, fontSize: 12, marginBottom: 10 }}>Bilans sanguins, ordonnances, photos... (photos ou PDF)</p>
-              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
-              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
-              {docs.map((d, i) => (
-                <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>ok - {d.name}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "protocoles" && (
+{view === "protocoles" && (
           <div>
             <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
             <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 20 }}>Mon protocole</h2>
