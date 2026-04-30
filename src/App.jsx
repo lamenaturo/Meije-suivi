@@ -332,6 +332,7 @@ function Cliente({ user, onLogout }) {
 
   return (
     <div style={{ minHeight: "100vh", background: bg, padding: "28px 20px", fontFamily: "sans-serif" }}>
+      {toast && <Toast message={toast} onClose={() => setToast("")} />}
       <div style={{ maxWidth: 600, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
           <div>
@@ -1049,7 +1050,10 @@ function Praticienne({ user, onLogout }) {
                     <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadProtocoleFiles(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
                     {uploadingProtocole && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
                     {protocoleFiles.length > 0 && protocoleFiles.map((f, i) => (
-                      <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>✓ {f.name}</div>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                        <span style={{ color: ac, fontSize: 12 }}>✓ {f.name}</span>
+                        <button onClick={() => setProtocoleFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+                      </div>
                     ))}
                   </div>
                   <button onClick={sendProtocole} disabled={sendingProtocole || !newProtocole.titre.trim()} style={{ ...btn("primary"), opacity: !newProtocole.titre.trim() ? 0.5 : 1 }}>
@@ -1136,7 +1140,10 @@ function Praticienne({ user, onLogout }) {
                     {uploadedAnamnese.length > 0 && (
                       <div style={{ marginBottom: 14 }}>
                         {uploadedAnamnese.map((f, i) => (
-                          <div key={i} style={{ color: ac, fontSize: 13, marginBottom: 4 }}>✓ {f.name}</div>
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ color: ac, fontSize: 13 }}>✓ {f.name}</span>
+                            <button onClick={() => setUploadedAnamnese(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+                          </div>
                         ))}
                         <button onClick={saveAnamnesePDF} disabled={savingAnamnese} style={{ ...btn("primary"), marginTop: 10 }}>
                           {savingAnamnese ? "Enregistrement..." : "Enregistrer dans le dossier"}
