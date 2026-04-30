@@ -18,7 +18,7 @@ Application de suivi hebdomadaire pour les consultantes de meije.naturo.
 
 ### Étape 3 — Créer ton compte praticienne
 1. Va sur ton URL Vercel
-2. Crée un compte avec l'email : meije@naturo.fr
+2. Crée un compte avec l'email : lamenaturo@gmail.com
 3. C'est tout — tu es automatiquement reconnue comme praticienne
 
 ## Connexion praticienne
