@@ -385,6 +385,14 @@ function Cliente({ user, onLogout }) {
                   <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</div>
                 </div>
                 <p style={{ color: tm, fontSize: 14, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
+                {p.fichiers && p.fichiers.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ color: "#9B8EC4", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Fichiers joints</div>
+                    {p.fichiers.map((f, i) => (
+                      <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: "rgba(155,140,196,0.15)", border: "1px solid rgba(155,140,196,0.3)", borderRadius: 8, padding: "8px 14px", color: "#9B8EC4", fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 6 }}>{f.name}</a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -510,12 +518,34 @@ function Praticienne({ user, onLogout }) {
     await updateDoc(doc(db, "users", selected.uid), { complements: current.filter((_, i) => i !== idx) });
   };
 
+  const [protocoleFiles, setProtocoleFiles] = useState([]);
+  const [uploadingProtocole, setUploadingProtocole] = useState(false);
+
+  const uploadProtocoleFiles = async (files) => {
+    setUploadingProtocole(true);
+    const uploaded = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "meije-naturo/protocoles");
+      try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/auto/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
+      } catch (e) { console.error(e); }
+    }
+    setProtocoleFiles(prev => [...prev, ...uploaded]);
+    setUploadingProtocole(false);
+  };
+
   const sendProtocole = async () => {
-    if (!newProtocole.titre.trim() || !newProtocole.contenu.trim()) return;
+    if (!newProtocole.titre.trim()) return;
     setSendingProtocole(true);
     await addDoc(collection(db, "protocoles"), {
       toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom,
       titre: newProtocole.titre.trim(), contenu: newProtocole.contenu.trim(),
+      fichiers: protocoleFiles,
       date: new Date().toISOString(),
     });
     // Envoyer email de notification
@@ -530,6 +560,7 @@ function Praticienne({ user, onLogout }) {
       }
     } catch (e) { console.error("Email non envoye:", e); }
     setNewProtocole({ titre: "", contenu: "" });
+    setProtocoleFiles([]);
     setSendingProtocole(false);
   };
 
@@ -837,6 +868,13 @@ function Praticienne({ user, onLogout }) {
                           <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
                         </div>
                         <p style={{ color: tm, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
+                        {p.fichiers && p.fichiers.length > 0 && (
+                          <div style={{ marginTop: 12 }}>
+                            {p.fichiers.map((f, i) => (
+                              <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: "rgba(155,140,196,0.15)", border: "1px solid rgba(155,140,196,0.3)", borderRadius: 8, padding: "6px 12px", color: "#9B8EC4", fontSize: 12, textDecoration: "none", marginRight: 8, marginBottom: 6 }}>{f.name}</a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -851,7 +889,15 @@ function Praticienne({ user, onLogout }) {
                     <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Contenu</label>
                     <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Rédige le protocole complet ici..." rows={12} style={{ ...iS, resize: "vertical" }} />
                   </div>
-                  <button onClick={sendProtocole} disabled={sendingProtocole || !newProtocole.titre.trim() || !newProtocole.contenu.trim()} style={{ ...btn("primary"), opacity: !newProtocole.titre.trim() ? 0.5 : 1 }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Fichiers joints (PDF, images)</label>
+                    <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadProtocoleFiles(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
+                    {uploadingProtocole && <div style={{ color: ac, fontSize: 13, marginTop: 8 }}>Upload en cours...</div>}
+                    {protocoleFiles.length > 0 && protocoleFiles.map((f, i) => (
+                      <div key={i} style={{ color: ac, fontSize: 12, marginTop: 6 }}>✓ {f.name}</div>
+                    ))}
+                  </div>
+                  <button onClick={sendProtocole} disabled={sendingProtocole || !newProtocole.titre.trim()} style={{ ...btn("primary"), opacity: !newProtocole.titre.trim() ? 0.5 : 1 }}>
                     {sendingProtocole ? "Envoi..." : `Envoyer à ${selected.prenom}`}
                   </button>
                 </div>
