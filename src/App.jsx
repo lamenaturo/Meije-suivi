@@ -11,12 +11,12 @@ const UPLOAD_PRESET = "meije_naturo";
 const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je ne sais pas"];
 
 const TI = [
-  { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment tu as dormi cette semaine ?" },
-  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment tu as digere cette semaine ?" },
-  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens au niveau de ton energie ?" },
-  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens au niveau des douleurs ?" },
+  { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment as-tu dormi cette semaine ?" },
+  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digere cette semaine ?" },
+  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau energie cette semaine ?" },
+  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens niveau douleurs cette semaine ?" },
   { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens emotionnellement cette semaine ?" },
-  { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment tu as mange cette semaine ?" },
+  { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mange cette semaine ?" },
 ];
 
 const SC = [
@@ -333,7 +333,7 @@ function Cliente({ user, onLogout }) {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Confidences pour Meije</label>
-              <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Tout ce que tu veux partager..." rows={4} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Un detail, une question, quelque chose qui s est passe cette semaine..." rows={4} style={{ ...iS, resize: "vertical" }} />
             </div>
 
             {/* Upload documents */}
