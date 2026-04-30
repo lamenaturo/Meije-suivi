@@ -559,6 +559,7 @@ function Praticienne({ user, onLogout }) {
   const [protocoles2, setProtocoles2] = useState([]);
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const getDefaultMessage = (prenom) => `Bonjour ${prenom},\n\nSuite à notre consultation, je t'ai préparé ton protocole personnalisé. Tu le trouveras ci-dessous.\n\nN'hésite pas à me contacter si tu as des questions.\n\nPrends soin de toi 🌿\nMeije`;
+  const getDefaultTitre = (prenom, nb) => `Protocole n°${nb + 1} — ${prenom}`;
   const [sendingProtocole, setSendingProtocole] = useState(false);
   const [newComplement, setNewComplement] = useState({ nom: "", lien: "" });
   const [savingComplements, setSavingComplements] = useState(false);
@@ -591,7 +592,7 @@ function Praticienne({ user, onLogout }) {
 
   const select = c => {
     setSelected(c); setNewMsg(""); setActiveTab("dossier"); setAnamneseMode("view");
-    setNewProtocole({ titre: "", contenu: getDefaultMessage(c.prenom) });
+    setNewProtocole({ titre: getDefaultTitre(c.prenom, 0), contenu: getDefaultMessage(c.prenom) });
     const userRef = doc(db, "users", c.uid);
     onSnapshot(userRef, d => setClientData(d.data()));
     const q = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
@@ -601,7 +602,7 @@ function Praticienne({ user, onLogout }) {
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q4 = query(collection(db, "protocoles"), where("toUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q4, s => setProtocoles(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    onSnapshot(q4, s => { const p = s.docs.map(d => ({ id: d.id, ...d.data() })); setProtocoles(p); setNewProtocole(prev => ({ ...prev, titre: getDefaultTitre(c.prenom, p.length) })); });
     const q6 = query(collection(db, "documents"), where("userUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q6, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))));
   };
@@ -670,6 +671,13 @@ function Praticienne({ user, onLogout }) {
     }
     setProtocoleFiles(prev => [...prev, ...uploaded]);
     setUploadingProtocole(false);
+  };
+
+  const deleteProtocole = async (protocoleId) => {
+    if (!window.confirm("Supprimer ce protocole ?")) return;
+    const { deleteDoc, doc: firestoreDoc } = await import("firebase/firestore");
+    await deleteDoc(firestoreDoc(db, "protocoles", protocoleId));
+    showToast("Protocole supprimé");
   };
 
   const sendProtocole = async () => {
@@ -1009,7 +1017,10 @@ function Praticienne({ user, onLogout }) {
                       <div key={p.id} style={{ background: "rgba(155,140,196,0.08)", border: "1px solid rgba(155,140,196,0.2)", borderRadius: 12, padding: 18, marginBottom: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                           <div style={{ color: "#9B8EC4", fontWeight: 700, fontSize: 15 }}>{p.titre}</div>
-                          <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+                            <button onClick={() => deleteProtocole(p.id)} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+                          </div>
                         </div>
                         <p style={{ color: tm, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
                         {p.fichiers && p.fichiers.length > 0 && (
