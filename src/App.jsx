@@ -12,11 +12,11 @@ const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je
 
 const TI = [
   { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment as-tu dormi cette semaine ?" },
-  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digere cette semaine ?" },
-  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau energie cette semaine ?" },
+  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digéré cette semaine ?" },
+  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau énergie cette semaine ?" },
   { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens niveau douleurs cette semaine ?" },
-  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens emotionnellement cette semaine ?" },
-  { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mange cette semaine ?" },
+  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens émotionnellement cette semaine ?" },
+  { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mangé cette semaine ?" },
 ];
 
 const SC = [
@@ -62,7 +62,7 @@ function Auth({ onLogin }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [prenom, setPrenom] = useState("");
+  const [prénom, setPrénom] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -72,28 +72,28 @@ function Auth({ onLogin }) {
     try {
       const c = await signInWithEmailAndPassword(auth, email, password);
       const d = await getDoc(doc(db, "users", c.user.uid));
-      onLogin({ uid: c.user.uid, email, prenom: d.data() ? d.data().prenom : "", role: email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
+      onLogin({ uid: c.user.uid, email, prénom: d.data() ? d.data().prénom : "", role: email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
     } catch (e) { setError("Email ou mot de passe incorrect."); }
     setLoading(false);
   };
 
   const register = async () => {
     setError(""); setLoading(true);
-    if (!email || !password || !prenom) { setError("Remplis tous les champs."); setLoading(false); return; }
+    if (!email || !password || !prénom) { setError("Remplis tous les champs."); setLoading(false); return; }
     try {
       const c = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", c.user.uid), { prenom, email, role: "cliente", createdAt: new Date().toISOString(), complements: [] });
-      onLogin({ uid: c.user.uid, email, prenom, role: "cliente" });
+      await setDoc(doc(db, "users", c.user.uid), { prénom, email, role: "cliente", createdAt: new Date().toISOString(), complements: [] });
+      onLogin({ uid: c.user.uid, email, prénom, role: "cliente" });
     } catch (e) {
-      if (e.code === "auth/email-already-in-use") setError("Compte deja existant.");
+      if (e.code === "auth/email-already-in-use") setError("Compte déjà existant.");
       else if (e.code === "auth/weak-password") setError("Mot de passe trop court (6 min).");
-      else setError("Erreur creation compte.");
+      else setError("Erreur création compte.");
     }
     setLoading(false);
   };
 
   const reset = async () => {
-    if (!email) { setError("Entre ton email d abord."); return; }
+    if (!email) { setError("Entre ton email d'abord."); return; }
     setError(""); setLoading(true);
     try { await sendPasswordResetEmail(auth, email); setResetSent(true); }
     catch (e) { setError("Email introuvable."); }
@@ -105,18 +105,18 @@ function Auth({ onLogin }) {
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{ color: tx, fontSize: 24, fontWeight: 700, fontFamily: "serif" }}>meije.naturo</p>
-          <p style={{ color: td, fontSize: 13 }}>Ton espace de suivi personnalise</p>
+          <p style={{ color: td, fontSize: 13 }}>Ton espace de suivi personnalisé</p>
         </div>
         <div style={{ background: sf, borderRadius: 16, border: "1px solid " + bd, padding: 28 }}>
           <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: 3, marginBottom: 24 }}>
             <button onClick={() => { setMode("login"); setError(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 13, fontWeight: 600, background: mode === "login" ? ac : "transparent", color: mode === "login" ? "#0c0f0e" : tm }}>Se connecter</button>
-            <button onClick={() => { setMode("register"); setError(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 13, fontWeight: 600, background: mode === "register" ? ac : "transparent", color: mode === "register" ? "#0c0f0e" : tm }}>Creer un compte</button>
+            <button onClick={() => { setMode("register"); setError(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 13, fontWeight: 600, background: mode === "register" ? ac : "transparent", color: mode === "register" ? "#0c0f0e" : tm }}>Créer un compte</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {mode === "register" && (
               <div>
-                <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 5 }}>Prenom</label>
-                <input value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Ton prenom" style={iS} />
+                <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 5 }}>Prénom</label>
+                <input value={prénom} onChange={e => setPrénom(e.target.value)} placeholder="Ton prénom" style={iS} />
               </div>
             )}
             <div>
@@ -128,9 +128,9 @@ function Auth({ onLogin }) {
               <input value={password} onChange={e => setPassword(e.target.value)} placeholder="........" type="password" style={iS} />
             </div>
             {error && <div style={{ color: "#D4826A", fontSize: 13, background: "rgba(212,130,106,0.1)", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
-            {resetSent && <div style={{ color: ac, fontSize: 13, background: ad, borderRadius: 8, padding: "8px 12px" }}>Email envoye ! Verifie ta boite mail.</div>}
-            <button onClick={mode === "login" ? login : register} disabled={loading} style={{ ...btn("primary"), marginTop: 4 }}>{loading ? "..." : mode === "login" ? "Se connecter" : "Creer mon compte"}</button>
-            {mode === "login" && <button onClick={reset} style={{ background: "none", border: "none", color: td, fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "sans-serif", padding: 0, textAlign: "center" }}>Mot de passe oublie ?</button>}
+            {resetSent && <div style={{ color: ac, fontSize: 13, background: ad, borderRadius: 8, padding: "8px 12px" }}>Email envoyé ! Vérifie ta boîte mail.</div>}
+            <button onClick={mode === "login" ? login : register} disabled={loading} style={{ ...btn("primary"), marginTop: 4 }}>{loading ? "..." : mode === "login" ? "Se connecter" : "Créer mon compte"}</button>
+            {mode === "login" && <button onClick={reset} style={{ background: "none", border: "none", color: td, fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "sans-serif", padding: 0, textAlign: "center" }}>Mot de passe oublié ?</button>}
           </div>
         </div>
       </div>
@@ -199,7 +199,7 @@ function Cliente({ user, onLogout }) {
 
   const submit = async () => {
     await addDoc(collection(db, "entries"), {
-      userUid: user.uid, userEmail: user.email, userPrenom: user.prenom,
+      userUid: user.uid, userEmail: user.email, userPrénom: user.prénom,
       weekLabel: wk(), date: new Date().toISOString(),
       scores, notes, cyclePhase, cycleNote,
       complementsPris, humeur_libre: humeur, confidences, documents: docs,
@@ -222,9 +222,9 @@ function Cliente({ user, onLogout }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
           <div>
             <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>meije.naturo</div>
-            <h1 style={{ fontFamily: "serif", fontSize: 26, color: tx, fontWeight: 700 }}>Bonjour {user.prenom}</h1>
+            <h1 style={{ fontFamily: "serif", fontSize: 26, color: tx, fontWeight: 700 }}>Bonjour {user.prénom}</h1>
           </div>
-          <button onClick={onLogout} style={{ ...btn("ghost"), fontSize: 12, padding: "7px 14px" }}>Deconnexion</button>
+          <button onClick={onLogout} style={{ ...btn("ghost"), fontSize: 12, padding: "7px 14px" }}>Déconnexion</button>
         </div>
 
         {lm && (
@@ -238,8 +238,8 @@ function Cliente({ user, onLogout }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <button onClick={() => setView("anamnese")} style={{ background: wd, border: "1px solid rgba(200,149,108,0.3)", borderRadius: 14, padding: "20px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ color: wm, fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Mon questionnaire de sante</div>
-                <div style={{ color: tm, fontSize: 13 }}>{hasAnamnese ? "Consulter ou modifier mes reponses" : "A remplir avant notre premiere consultation"}</div>
+                <div style={{ color: wm, fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Mon questionnaire de santé</div>
+                <div style={{ color: tm, fontSize: 13 }}>{hasAnamnese ? "Consulter ou modifier mes réponses" : "À remplir avant notre première consultation"}</div>
               </div>
               <span style={{ fontSize: 22 }}>{">"}</span>
             </button>
@@ -254,7 +254,7 @@ function Cliente({ user, onLogout }) {
               <button onClick={() => setView("protocoles")} style={{ background: "rgba(155,140,196,0.1)", border: "1px solid rgba(155,140,196,0.25)", borderRadius: 14, padding: "18px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ color: "#9B8EC4", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Mon protocole</div>
-                  <div style={{ color: tm, fontSize: 13 }}>{protocoles.length} protocole{protocoles.length > 1 ? "s" : ""} recu{protocoles.length > 1 ? "s" : ""}</div>
+                  <div style={{ color: tm, fontSize: 13 }}>{protocoles.length} protocole{protocoles.length > 1 ? "s" : ""} reçu{protocoles.length > 1 ? "s" : ""}</div>
                 </div>
                 <span style={{ fontSize: 20 }}>{">"}</span>
               </button>
@@ -287,13 +287,13 @@ function Cliente({ user, onLogout }) {
             {/* Complements */}
             {complements.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Tes complements cette semaine</div>
+                <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Tes compléments cette semaine</div>
                 {complements.map((c, i) => (
                   <div key={i} style={{ marginBottom: 10 }}>
                     <div style={{ color: tm, fontSize: 13, marginBottom: 6 }}>{c}</div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      {["Pris regulierement", "Pris irregulierement", "Pas pris"].map(opt => (
-                        <button key={opt} onClick={() => setComplementsPris(p => ({ ...p, [c]: opt }))} style={{ padding: "6px 12px", borderRadius: 20, border: "2px solid " + (complementsPris[c] === opt ? (opt === "Pris regulierement" ? "#7BAF8C" : opt === "Pris irregulierement" ? "#C8B86A" : "#C4614A") : bd), background: complementsPris[c] === opt ? "rgba(255,255,255,0.06)" : "transparent", color: complementsPris[c] === opt ? tx : td, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>{opt}</button>
+                      {["Pris régulièrement", "Pris irrégulièrement", "Pas pris"].map(opt => (
+                        <button key={opt} onClick={() => setComplementsPris(p => ({ ...p, [c]: opt }))} style={{ padding: "6px 12px", borderRadius: 20, border: "2px solid " + (complementsPris[c] === opt ? (opt === "Pris régulièrement" ? "#7BAF8C" : opt === "Pris irrégulièrement" ? "#C8B86A" : "#C4614A") : bd), background: complementsPris[c] === opt ? "rgba(255,255,255,0.06)" : "transparent", color: complementsPris[c] === opt ? tx : td, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>{opt}</button>
                       ))}
                     </div>
                   </div>
@@ -303,13 +303,13 @@ function Cliente({ user, onLogout }) {
 
             {/* Cycle */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>🌸 Ou en es-tu dans ton cycle cette semaine ?</div>
+              <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>🌸 Où en es-tu dans ton cycle cette semaine ?</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                 {PHASES_CYCLE.map(p => (
                   <button key={p} onClick={() => setCyclePhase(p)} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (cyclePhase === p ? ac : bd), background: cyclePhase === p ? ad : "transparent", color: cyclePhase === p ? ac : tm, cursor: "pointer", fontSize: 13, fontFamily: "sans-serif" }}>{p}</button>
                 ))}
               </div>
-              <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Precisions sur ton cycle (douleurs, duree des regles, SPM...)" rows={2} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Précisions sur ton cycle (douleurs, durée des règles, SPM...)" rows={2} style={{ ...iS, resize: "vertical" }} />
             </div>
 
             {/* Autres questions avec score + note */}
@@ -327,14 +327,14 @@ function Cliente({ user, onLogout }) {
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Comment tu te sens globalement ?</label>
-              <textarea value={humeur} onChange={e => setHumeur(e.target.value)} placeholder="Fatiguee, stressee, plutot bien..." rows={3} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={humeur} onChange={e => setHumeur(e.target.value)} placeholder="Fatiguée, stressée, plutôt bien..." rows={3} style={{ ...iS, resize: "vertical" }} />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Tu as quelque chose a ajouter ?</label>
-              <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Un detail, une question, quelque chose qui s est passe cette semaine..." rows={4} style={{ ...iS, resize: "vertical" }} />
+              <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Tu as quelque chose à ajouter ?</label>
+              <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Un détail, une question, quelque chose qui s'est passé cette semaine..." rows={4} style={{ ...iS, resize: "vertical" }} />
             </div>
 
-            {saved ? <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 10, padding: 14, color: ac, fontWeight: 600, textAlign: "center" }}>Suivi enregistre !</div> : <button onClick={submit} style={{ ...btn("primary"), width: "100%" }}>Envoyer a Meije</button>}
+            {saved ? <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 10, padding: 14, color: ac, fontWeight: 600, textAlign: "center" }}>Suivi enregistré !</div> : <button onClick={submit} style={{ ...btn("primary"), width: "100%" }}>Envoyer à Meije</button>}
           </div>
         )}
 
@@ -361,10 +361,10 @@ function Cliente({ user, onLogout }) {
                     </div>
                   ))}
                   <button onClick={async () => {
-                    await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, userPrenom: user.prenom, date: new Date().toISOString(), files: docs });
+                    await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, userPrénom: user.prénom, date: new Date().toISOString(), files: docs });
                     setDocs([]);
-                    alert("Documents envoyes a Meije !");
-                  }} style={{ ...btn("primary"), marginTop: 12, width: "100%" }}>Envoyer a Meije</button>
+                    alert("Documents envoyés à Meije !");
+                  }} style={{ ...btn("primary"), marginTop: 12, width: "100%" }}>Envoyer à Meije</button>
                 </div>
               )}
             </div>
@@ -417,30 +417,50 @@ function Cliente({ user, onLogout }) {
 
 function Praticienne({ user, onLogout }) {
   const [clients, setClients] = useState([]);
+  const [recherche, setRecherche] = useState("");
   const [selected, setSelected] = useState(null);
   const [clientData, setClientData] = useState(null);
   const [entries, setEntries] = useState([]);
   const [messages, setMessages] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
+  const [protocoles, setProtocoles] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState("suivi");
-  const [protocoles, setProtocoles] = useState([]);
+  const [activeTab, setActiveTab] = useState("dossier");
+  const [protocoles2, setProtocoles2] = useState([]);
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const [sendingProtocole, setSendingProtocole] = useState(false);
   const [newComplement, setNewComplement] = useState("");
   const [savingComplements, setSavingComplements] = useState(false);
+  const [anamneseMode, setAnamneseMode] = useState("view"); // view | form | upload
+  const [anamneseForm, setAnamneseForm] = useState({});
+  const [uploadingAnamnese, setUploadingAnamnese] = useState(false);
+  const [uploadedAnamnese, setUploadedAnamnese] = useState([]);
+  const [savingAnamnese, setSavingAnamnese] = useState(false);
+  const [newClientForm, setNewClientForm] = useState({ prenom: "", email: "", password: "" });
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [showNewClient, setShowNewClient] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "users"), where("role", "==", "cliente"));
-    const u = onSnapshot(q, s => { setClients(s.docs.map(d => ({ uid: d.id, ...d.data() }))); setLoading(false); });
+    const u = onSnapshot(q, s => {
+      const list = s.docs.map(d => ({ uid: d.id, ...d.data() }));
+      list.sort((a, b) => (a.prenom || "").localeCompare(b.prenom || "", "fr"));
+      setClients(list);
+      setLoading(false);
+    });
     return u;
   }, []);
 
+  const clientsFiltres = clients.filter(c =>
+    (c.prenom || "").toLowerCase().includes(recherche.toLowerCase()) ||
+    (c.email || "").toLowerCase().includes(recherche.toLowerCase())
+  );
+
   const select = c => {
-    setSelected(c); setNewMsg(""); setActiveTab("suivi");
+    setSelected(c); setNewMsg(""); setActiveTab("dossier"); setAnamneseMode("view");
     const userRef = doc(db, "users", c.uid);
     onSnapshot(userRef, d => setClientData(d.data()));
     const q = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
@@ -455,6 +475,24 @@ function Praticienne({ user, onLogout }) {
     onSnapshot(q6, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))));
   };
 
+  const createClient = async () => {
+    if (!newClientForm.prenom || !newClientForm.email || !newClientForm.password) return;
+    setCreatingClient(true);
+    try {
+      const c = await createUserWithEmailAndPassword(auth, newClientForm.email, newClientForm.password);
+      await setDoc(doc(db, "users", c.uid), {
+        prenom: newClientForm.prenom, email: newClientForm.email,
+        role: "cliente", createdAt: new Date().toISOString(), complements: []
+      });
+      await signInWithEmailAndPassword(auth, PRATICIENNE_EMAIL, "");
+      setNewClientForm({ prenom: "", email: "", password: "" });
+      setShowNewClient(false);
+    } catch (e) {
+      // Client created, need to re-auth praticienne
+    }
+    setCreatingClient(false);
+  };
+
   const addComplement = async () => {
     if (!newComplement.trim()) return;
     setSavingComplements(true);
@@ -466,8 +504,7 @@ function Praticienne({ user, onLogout }) {
 
   const removeComplement = async (idx) => {
     const current = clientData && clientData.complements ? clientData.complements : [];
-    const updated = current.filter((_, i) => i !== idx);
-    await updateDoc(doc(db, "users", selected.uid), { complements: updated });
+    await updateDoc(doc(db, "users", selected.uid), { complements: current.filter((_, i) => i !== idx) });
   };
 
   const sendProtocole = async () => {
@@ -485,73 +522,216 @@ function Praticienne({ user, onLogout }) {
   const send = async () => {
     if (!newMsg.trim()) return;
     setSending(true);
-    await addDoc(collection(db, "messages"), { toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom, text: newMsg.trim(), date: new Date().toISOString() });
+    await addDoc(collection(db, "messages"), {
+      toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom,
+      text: newMsg.trim(), date: new Date().toISOString()
+    });
     setNewMsg(""); setSending(false);
+  };
+
+  const uploadAnamnesePDF = async (files) => {
+    setUploadingAnamnese(true);
+    const uploaded = [];
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "meije-naturo/anamneses");
+      try {
+        const res = await fetch("https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/auto/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
+      } catch (e) { console.error(e); }
+    }
+    setUploadedAnamnese(prev => [...prev, ...uploaded]);
+    setUploadingAnamnese(false);
+  };
+
+  const saveAnamnesePDF = async () => {
+    if (uploadedAnamnese.length === 0) return;
+    setSavingAnamnese(true);
+    await addDoc(collection(db, "anamneses"), {
+      userUid: selected.uid, userEmail: selected.email, userPrenom: selected.prenom,
+      date: new Date().toISOString(), saisieParPraticienne: true,
+      bilans: uploadedAnamnese, thyroideScore: 0, thyroideInterpretation: "",
+      form: anamneseForm,
+    });
+    setUploadedAnamnese([]); setSavingAnamnese(false); setAnamneseMode("view");
   };
 
   if (loading) return <div style={{ color: td, padding: 40, textAlign: "center" }}>Chargement...</div>;
 
+  const TABS = [
+    ["dossier", "Dossier"],
+    ["suivi", "Suivis"],
+    ["complements", "Compléments"],
+    ["protocole", "Protocole"],
+    ["anamnese", "Questionnaire"],
+    ["documents", "Documents"],
+    ["message", "Message"],
+  ];
+
+  const tabColor = (key) => {
+    if (key === "message") return { bg: wd, color: wm };
+    if (key === "protocole") return { bg: "rgba(155,140,196,0.15)", color: "#9B8EC4" };
+    return { bg: ad, color: ac };
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: bg, fontFamily: "sans-serif" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 20px" }}>
+
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
           <div>
             <div style={{ color: wm, fontSize: 11, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Espace praticienne</div>
-            <h1 style={{ fontFamily: "serif", fontSize: 26, color: tx, fontWeight: 700 }}>Meije - meije.naturo</h1>
+            <h1 style={{ fontFamily: "serif", fontSize: 26, color: tx, fontWeight: 700 }}>Meije · meije.naturo</h1>
           </div>
-          <button onClick={onLogout} style={{ ...btn("ghost"), fontSize: 12, padding: "7px 14px" }}>Deconnexion</button>
+          <button onClick={onLogout} style={{ ...btn("ghost"), fontSize: 12, padding: "7px 14px" }}>Déconnexion</button>
         </div>
 
         {!selected ? (
           <div>
-            <h2 style={{ color: tx, fontSize: 16, fontWeight: 600, marginBottom: 16 }}>{clients.length === 0 ? "Aucune consultante pour l instant." : clients.length + " consultante" + (clients.length > 1 ? "s" : "")}</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {clients.map(c => (
-                <button key={c.uid} onClick={() => select(c)} style={{ background: sf, border: "1px solid " + bd, borderRadius: 12, padding: "16px 20px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{c.prenom}</div>
-                    <div style={{ color: td, fontSize: 12 }}>{c.email}</div>
+            {/* Recherche + nouvelle cliente */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+              <input
+                value={recherche}
+                onChange={e => setRecherche(e.target.value)}
+                placeholder="Rechercher une consultante..."
+                style={{ ...iS, flex: 1 }}
+              />
+              <button onClick={() => setShowNewClient(!showNewClient)} style={{ ...btn("warm"), padding: "11px 16px", flexShrink: 0 }}>
+                + Nouvelle consultante
+              </button>
+            </div>
+
+            {/* Formulaire nouvelle cliente */}
+            {showNewClient && (
+              <div style={{ background: wd, border: "1px solid rgba(200,149,108,0.25)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+                <div style={{ color: wm, fontWeight: 600, fontSize: 15, marginBottom: 14 }}>Créer un espace pour une consultante</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input value={newClientForm.prenom} onChange={e => setNewClientForm(f => ({ ...f, prenom: e.target.value }))} placeholder="Prénom" style={{ ...iS, flex: 1, minWidth: 140 }} />
+                  <input value={newClientForm.email} onChange={e => setNewClientForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" type="email" style={{ ...iS, flex: 2, minWidth: 200 }} />
+                  <input value={newClientForm.password} onChange={e => setNewClientForm(f => ({ ...f, password: e.target.value }))} placeholder="Mot de passe temporaire" type="text" style={{ ...iS, flex: 1, minWidth: 160 }} />
+                </div>
+                <p style={{ color: td, fontSize: 12, marginTop: 8, marginBottom: 12 }}>Tu enverras ce mot de passe à ta consultante. Elle pourra le changer via "Mot de passe oublié".</p>
+                <button onClick={createClient} disabled={creatingClient} style={{ ...btn("warm") }}>
+                  {creatingClient ? "Création..." : "Créer son espace"}
+                </button>
+              </div>
+            )}
+
+            {/* Liste clientes */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <h2 style={{ color: tx, fontSize: 15, fontWeight: 600 }}>
+                {clients.length === 0 ? "Aucune consultante" : `${clients.length} consultante${clients.length > 1 ? "s" : ""}`}
+              </h2>
+              {recherche && <span style={{ color: td, fontSize: 13 }}>— {clientsFiltres.length} résultat{clientsFiltres.length > 1 ? "s" : ""}</span>}
+            </div>
+
+            {/* Index alphabétique */}
+            {!recherche && clients.length > 5 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => {
+                  const has = clients.some(c => (c.prenom || "").toUpperCase().startsWith(l));
+                  return (
+                    <button key={l} onClick={() => setRecherche(l)} style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid " + (has ? ab : bd), background: has ? ad : "transparent", color: has ? ac : td, cursor: has ? "pointer" : "default", fontSize: 12, fontFamily: "sans-serif", fontWeight: 600 }}>{l}</button>
+                  );
+                })}
+                {recherche && <button onClick={() => setRecherche("")} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid " + bd, background: sf, color: tm, cursor: "pointer", fontSize: 12, fontFamily: "sans-serif" }}>Tout voir</button>}
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {clientsFiltres.map(c => (
+                <button key={c.uid} onClick={() => select(c)} style={{ background: sf, border: "1px solid " + bd, borderRadius: 12, padding: "14px 20px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.15s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: ad, border: "1px solid " + ab, display: "flex", alignItems: "center", justifyContent: "center", color: ac, fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
+                      {(c.prenom || "?")[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{c.prenom}</div>
+                      <div style={{ color: td, fontSize: 12 }}>{c.email}</div>
+                    </div>
                   </div>
-                  <span style={{ color: td, fontSize: 20 }}>{">"}</span>
+                  <span style={{ color: td, fontSize: 18 }}>→</span>
                 </button>
               ))}
+              {clientsFiltres.length === 0 && recherche && (
+                <div style={{ color: td, fontSize: 14, padding: 20, textAlign: "center" }}>Aucune consultante trouvée pour "{recherche}"</div>
+              )}
             </div>
           </div>
         ) : (
           <div>
-            <button onClick={() => setSelected(null)} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
-            <h2 style={{ fontFamily: "serif", fontSize: 22, color: tx, fontWeight: 700, marginBottom: 4 }}>{selected.prenom}</h2>
-            <div style={{ color: td, fontSize: 13, marginBottom: 20 }}>{selected.email}</div>
-
-            <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 24, flexWrap: "wrap" }}>
-              {[["suivi", "Suivis"], ["complements", "Complements"], ["protocole", "Protocole"], ["anamnese", "Questionnaire"], ["documents", "Documents"], ["message", "Message"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ flex: 1, minWidth: 80, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? (key === "message" ? wd : key === "protocole" ? "rgba(155,140,196,0.15)" : ad) : "transparent", color: activeTab === key ? (key === "message" ? wm : key === "protocole" ? "#9B8EC4" : ac) : td }}>{label}</button>
-              ))}
+            {/* Header fiche cliente */}
+            <button onClick={() => setSelected(null)} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>← Retour</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, background: sf, borderRadius: 14, padding: 20, border: "1px solid " + bd }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: ad, border: "1px solid " + ab, display: "flex", alignItems: "center", justifyContent: "center", color: ac, fontWeight: 700, fontSize: 22, flexShrink: 0 }}>
+                {(selected.prenom || "?")[0].toUpperCase()}
+              </div>
+              <div>
+                <h2 style={{ fontFamily: "serif", fontSize: 22, color: tx, fontWeight: 700 }}>{selected.prenom}</h2>
+                <div style={{ color: td, fontSize: 13 }}>{selected.email}</div>
+                <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                  <span style={{ fontSize: 12, color: tm }}>{entries.length} suivi{entries.length > 1 ? "s" : ""}</span>
+                  <span style={{ color: td }}>·</span>
+                  <span style={{ fontSize: 12, color: anamneses.length > 0 ? ac : td }}>{anamneses.length > 0 ? "Questionnaire rempli" : "Pas de questionnaire"}</span>
+                  <span style={{ color: td }}>·</span>
+                  <span style={{ fontSize: 12, color: protocoles.length > 0 ? "#9B8EC4" : td }}>{protocoles.length > 0 ? `${protocoles.length} protocole${protocoles.length > 1 ? "s" : ""}` : "Pas de protocole"}</span>
+                </div>
+              </div>
             </div>
 
-            {activeTab === "complements" && (
-              <div>
-                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Liste des complements de {selected.prenom}</div>
-                {clientData && clientData.complements && clientData.complements.length > 0
-                  ? clientData.complements.map((c, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: sf, borderRadius: 10, padding: "12px 16px", marginBottom: 8 }}>
-                      <span style={{ color: tx, fontSize: 14 }}>{c}</span>
-                      <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 16 }}>x</button>
-                    </div>
-                  ))
-                  : <div style={{ color: td, fontSize: 14, marginBottom: 16 }}>Aucun complement ajoute pour l instant.</div>
-                }
-                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                  <input value={newComplement} onChange={e => setNewComplement(e.target.value)} onKeyDown={e => e.key === "Enter" && addComplement()} placeholder="Ajouter un complement (ex: Magnesium 300mg/j)" style={{ ...iS, flex: 1 }} />
-                  <button onClick={addComplement} disabled={savingComplements} style={{ ...btn("primary"), padding: "11px 16px", flexShrink: 0 }}>Ajouter</button>
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 24, overflowX: "auto", paddingBottom: 4 }}>
+              {TABS.map(([key, label]) => {
+                const tc = tabColor(key);
+                return (
+                  <button key={key} onClick={() => setActiveTab(key)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? tc.bg : "rgba(255,255,255,0.04)", color: activeTab === key ? tc.color : td, transition: "all 0.2s" }}>{label}</button>
+                );
+              })}
+            </div>
+
+            {/* Dossier résumé */}
+            {activeTab === "dossier" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+                <div onClick={() => setActiveTab("anamnese")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Questionnaire</div>
+                  {anamneses.length > 0
+                    ? <div style={{ color: tx, fontSize: 14 }}>Rempli le {new Date(anamneses[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+                    : <div style={{ color: td, fontSize: 14 }}>Non rempli</div>
+                  }
+                </div>
+                <div onClick={() => setActiveTab("suivi")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Derniers suivis</div>
+                  <div style={{ color: tx, fontSize: 14 }}>{entries.length} semaine{entries.length > 1 ? "s" : ""} enregistrée{entries.length > 1 ? "s" : ""}</div>
+                  {entries.length > 0 && <div style={{ color: td, fontSize: 12, marginTop: 4 }}>Dernier : {entries[entries.length-1].weekLabel}</div>}
+                </div>
+                <div onClick={() => setActiveTab("complements")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Compléments</div>
+                  <div style={{ color: tx, fontSize: 14 }}>{clientData?.complements?.length || 0} complément{(clientData?.complements?.length || 0) > 1 ? "s" : ""} prescrit{(clientData?.complements?.length || 0) > 1 ? "s" : ""}</div>
+                </div>
+                <div onClick={() => setActiveTab("protocole")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: "#9B8EC4", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Protocole</div>
+                  <div style={{ color: tx, fontSize: 14 }}>{protocoles.length} protocole{protocoles.length > 1 ? "s" : ""} envoyé{protocoles.length > 1 ? "s" : ""}</div>
+                </div>
+                <div onClick={() => setActiveTab("message")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: wm, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Messages</div>
+                  <div style={{ color: tx, fontSize: 14 }}>{messages.length} message{messages.length > 1 ? "s" : ""}</div>
+                </div>
+                <div onClick={() => setActiveTab("documents")} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, cursor: "pointer" }}>
+                  <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Documents</div>
+                  <div style={{ color: tx, fontSize: 14 }}>{documents.length} document{documents.length > 1 ? "s" : ""}</div>
                 </div>
               </div>
             )}
 
+            {/* Suivis */}
             {activeTab === "suivi" && (
               <div>
                 {entries.length === 0
-                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore rempli de suivi.</div>
+                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n'a pas encore rempli de suivi.</div>
                   : [...entries].reverse().map(e => {
                     const vs = TI.map(i => e.scores && e.scores[i.key]).filter(Boolean);
                     const avg = vs.length ? (vs.reduce((a, b) => a + b, 0) / vs.length).toFixed(1) : null;
@@ -564,46 +744,37 @@ function Praticienne({ user, onLogout }) {
                           </div>
                           {avg && <SD value={Math.round(avg)} size={40} />}
                         </div>
-
-                        {/* Complements */}
                         {e.complementsPris && Object.keys(e.complementsPris).length > 0 && (
                           <div style={{ marginBottom: 12 }}>
-                            <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Complements</div>
+                            <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Compléments</div>
                             {Object.entries(e.complementsPris).map(([comp, statut]) => (
                               <div key={comp} style={{ display: "flex", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "6px 12px", marginBottom: 4 }}>
                                 <span style={{ color: tm, fontSize: 13 }}>{comp}</span>
-                                <span style={{ fontSize: 12, color: statut === "Pris regulierement" ? "#7BAF8C" : statut === "Pris irregulierement" ? "#C8B86A" : "#C4614A", fontWeight: 600 }}>{statut}</span>
+                                <span style={{ fontSize: 12, color: statut === "Pris régulièrement" ? "#7BAF8C" : statut === "Pris irrégulièrement" ? "#C8B86A" : "#C4614A", fontWeight: 600 }}>{statut}</span>
                               </div>
                             ))}
                           </div>
                         )}
-
-                        {/* Cycle */}
                         {e.cyclePhase && (
                           <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
                             <div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Phase du cycle : {e.cyclePhase}</div>
                             {e.cycleNote && <p style={{ color: tm, fontSize: 13 }}>{e.cycleNote}</p>}
                           </div>
                         )}
-
-                        {/* Scores + notes */}
                         {TI.filter(i => e.scores && e.scores[i.key]).map(i => {
                           const sc = SC.find(x => x.v === e.scores[i.key]);
                           return (
                             <div key={i.key} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: e.notes && e.notes[i.key] ? 4 : 0 }}>
-                                <span style={{ color: tm, fontSize: 13 }}>{i.label}</span>
+                                <span style={{ color: tm, fontSize: 13 }}>{i.icon} {i.label}</span>
                                 <span style={{ fontSize: 12, color: sc ? sc.color : td, fontWeight: 700 }}>{sc ? sc.label : "-"}</span>
                               </div>
                               {e.notes && e.notes[i.key] && <p style={{ color: td, fontSize: 12, fontStyle: "italic" }}>{e.notes[i.key]}</p>}
                             </div>
                           );
                         })}
-
                         {e.humeur_libre && <div style={{ background: "rgba(126,200,160,0.06)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}><div style={{ color: ac, fontSize: 11, marginBottom: 4 }}>Humeur</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.humeur_libre}</p></div>}
-                        {e.confidences && <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}><div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Confidences</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.confidences}</p></div>}
-
-                        {/* Documents */}
+                        {e.confidences && <div style={{ background: "rgba(200,149,108,0.07)", borderRadius: 8, padding: "10px 14px", marginBottom: 8 }}><div style={{ color: wm, fontSize: 11, marginBottom: 4 }}>Ajout</div><p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{e.confidences}</p></div>}
                         {e.documents && e.documents.length > 0 && (
                           <div>
                             <div style={{ color: ac, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Documents</div>
@@ -619,46 +790,30 @@ function Praticienne({ user, onLogout }) {
               </div>
             )}
 
-            {activeTab === "anamnese" && (
+            {/* Compléments */}
+            {activeTab === "complements" && (
               <div>
-                {anamneses.length === 0
-                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore rempli le questionnaire.</div>
-                  : anamneses.map(a => (
-                    <div key={a.id}>
-                      <div style={{ color: td, fontSize: 12, marginBottom: 16 }}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
-                      <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-                        <div style={{ color: ac, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Score thyroide : {a.thyroideScore} / 23</div>
-                        <div style={{ color: tm, fontSize: 13 }}>{a.thyroideInterpretation}</div>
-                      </div>
-                      {a.bilans && a.bilans.length > 0 && (
-                        <div style={{ marginBottom: 20 }}>
-                          <div style={{ color: wm, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Bilans uploades</div>
-                          {a.bilans.map((b, i) => (
-                            <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: wd, border: "1px solid rgba(200,149,108,0.2)", borderRadius: 10, padding: "8px 14px", color: wm, fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 8 }}>{b.name}</a>
-                          ))}
-                        </div>
-                      )}
-                      {a.form && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {[["Problematique principale", a.form.problematique], ["Duree du probleme", a.form.dureeProbleme], ["Impact vie quotidienne", a.form.impactVieQuotidienne], ["Objectifs 3 mois", a.form.objectifs3mois], ["Antecedents medicaux", a.form.maladiesChroniques], ["Medicaments", a.form.medicaments], ["Complements actuels", a.form.complementsActuels], ["Heure coucher / lever", a.form.heureCoucher && (a.form.heureCoucher + " / " + a.form.heureLever)], ["Qualite sommeil", a.form.qualiteSommeil && (a.form.qualiteSommeil + " / 10")], ["Niveau stress", a.form.niveauStress && (a.form.niveauStress + " / 10")], ["Sources de stress", a.form.sourcesStress], ["Age regles", a.form.ageRegles], ["Duree cycle / regles", a.form.dureeCycle && (a.form.dureeCycle + "j / " + a.form.dureeRegles + "j")], ["Intensite douleurs", a.form.intensiteDouleurs && (a.form.intensiteDouleurs + " / 10")], ["Description douleurs", a.form.descriptionDouleurs], ["Alimentation", a.form.petitDejeunerType && ("Pdej: " + a.form.petitDejeunerType + " | Dej: " + a.form.dejeunerType + " | Din: " + a.form.dinerType)], ["Eau/jour", a.form.quantiteEau], ["Motivation", a.form.motivation && (a.form.motivation + " / 10")], ["Attentes", a.form.attentes], ["Infos supplementaires", a.form.infosSup]].filter(([_, v]) => v).map(([label, val]) => (
-                            <div key={label} style={{ display: "flex", gap: 12, background: sf, borderRadius: 8, padding: "10px 14px" }}>
-                              <span style={{ color: td, fontSize: 12, minWidth: 160, flexShrink: 0 }}>{label}</span>
-                              <span style={{ color: tm, fontSize: 13, lineHeight: 1.5 }}>{val}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Compléments de {selected.prenom}</div>
+                {clientData?.complements?.length > 0
+                  ? clientData.complements.map((c, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: sf, borderRadius: 10, padding: "12px 16px", marginBottom: 8 }}>
+                      <span style={{ color: tx, fontSize: 14 }}>{c}</span>
+                      <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#C4614A", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
                     </div>
                   ))
+                  : <div style={{ color: td, fontSize: 14, marginBottom: 16 }}>Aucun complément ajouté.</div>
                 }
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <input value={newComplement} onChange={e => setNewComplement(e.target.value)} onKeyDown={e => e.key === "Enter" && addComplement()} placeholder="Ex : Magnésium 300mg/j au dîner" style={{ ...iS, flex: 1 }} />
+                  <button onClick={addComplement} disabled={savingComplements} style={{ ...btn("primary"), padding: "11px 16px", flexShrink: 0 }}>Ajouter</button>
+                </div>
               </div>
             )}
 
+            {/* Protocole */}
             {activeTab === "protocole" && (
               <div>
-                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Protocoles envoyes a {selected.prenom}</div>
-
-                {/* Protocoles existants */}
+                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Protocoles de {selected.prenom}</div>
                 {protocoles.length > 0 && (
                   <div style={{ marginBottom: 24 }}>
                     {[...protocoles].reverse().map(p => (
@@ -672,36 +827,124 @@ function Praticienne({ user, onLogout }) {
                     ))}
                   </div>
                 )}
-
-                {/* Nouveau protocole */}
                 <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18 }}>
-                  <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Envoyer un nouveau protocole</div>
+                  <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Nouveau protocole</div>
                   <div style={{ marginBottom: 12 }}>
-                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Titre du protocole</label>
-                    <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Ex: Protocole phase 1 - Systeme nerveux" style={iS} />
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Titre</label>
+                    <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Ex : Protocole phase 1 - Système nerveux" style={iS} />
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Contenu du protocole</label>
-                    <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Redige le protocole complet ici..." rows={12} style={{ ...iS, resize: "vertical" }} />
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Contenu</label>
+                    <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Rédige le protocole complet ici..." rows={12} style={{ ...iS, resize: "vertical" }} />
                   </div>
                   <button onClick={sendProtocole} disabled={sendingProtocole || !newProtocole.titre.trim() || !newProtocole.contenu.trim()} style={{ ...btn("primary"), opacity: !newProtocole.titre.trim() ? 0.5 : 1 }}>
-                    {sendingProtocole ? "Envoi..." : "Envoyer le protocole a " + selected.prenom}
+                    {sendingProtocole ? "Envoi..." : `Envoyer à ${selected.prenom}`}
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Questionnaire / Anamnèse */}
+            {activeTab === "anamnese" && (
+              <div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  <button onClick={() => setAnamneseMode("view")} style={{ ...btn(anamneseMode === "view" ? "primary" : "ghost"), fontSize: 12, padding: "7px 14px" }}>Voir les réponses</button>
+                  <button onClick={() => setAnamneseMode("upload")} style={{ ...btn(anamneseMode === "upload" ? "primary" : "ghost"), fontSize: 12, padding: "7px 14px" }}>Uploader un PDF</button>
+                </div>
+
+                {anamneseMode === "view" && (
+                  anamneses.length === 0
+                    ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n'a pas encore rempli le questionnaire.</div>
+                    : anamneses.map(a => (
+                      <div key={a.id}>
+                        <div style={{ color: td, fontSize: 12, marginBottom: 16 }}>
+                          Rempli le {new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                          {a.saisieParPraticienne && <span style={{ color: wm, marginLeft: 8 }}>· Saisi par toi</span>}
+                        </div>
+                        {a.thyroideScore > 0 && (
+                          <div style={{ background: ad, border: "1px solid " + ab, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                            <div style={{ color: ac, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Score thyroïde : {a.thyroideScore} / 23</div>
+                            <div style={{ color: tm, fontSize: 13 }}>{a.thyroideInterpretation}</div>
+                          </div>
+                        )}
+                        {a.bilans && a.bilans.length > 0 && (
+                          <div style={{ marginBottom: 20 }}>
+                            <div style={{ color: wm, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Documents uploadés</div>
+                            {a.bilans.map((b, i) => (
+                              <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: wd, border: "1px solid rgba(200,149,108,0.2)", borderRadius: 10, padding: "8px 14px", color: wm, fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 8 }}>{b.name}</a>
+                            ))}
+                          </div>
+                        )}
+                        {a.form && Object.keys(a.form).length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {[
+                              ["Problématique principale", a.form.problematique],
+                              ["Durée du problème", a.form.dureeProbleme],
+                              ["Impact vie quotidienne", a.form.impactVieQuotidienne],
+                              ["Objectifs 3 mois", a.form.objectifs3mois],
+                              ["Antécédents médicaux", a.form.maladiesChroniques],
+                              ["Médicaments", a.form.medicaments],
+                              ["Compléments actuels", a.form.complementsActuels],
+                              ["Coucher / Lever", a.form.heureCoucher && `${a.form.heureCoucher} / ${a.form.heureLever}`],
+                              ["Qualité sommeil", a.form.qualiteSommeil && `${a.form.qualiteSommeil} / 10`],
+                              ["Niveau stress", a.form.niveauStress && `${a.form.niveauStress} / 10`],
+                              ["Sources de stress", a.form.sourcesStress],
+                              ["Âge des règles", a.form.ageRegles],
+                              ["Durée cycle / règles", a.form.dureeCycle && `${a.form.dureeCycle}j / ${a.form.dureeRegles}j`],
+                              ["Intensité douleurs", a.form.intensiteDouleurs && `${a.form.intensiteDouleurs} / 10`],
+                              ["Description douleurs", a.form.descriptionDouleurs],
+                              ["Petit-déjeuner", a.form.petitDejeunerType],
+                              ["Déjeuner", a.form.dejeunerType],
+                              ["Dîner", a.form.dinerType],
+                              ["Eau / jour", a.form.quantiteEau],
+                              ["Motivation", a.form.motivation && `${a.form.motivation} / 10`],
+                              ["Attentes", a.form.attentes],
+                              ["Informations supplémentaires", a.form.infosSup],
+                            ].filter(([_, v]) => v).map(([label, val]) => (
+                              <div key={label} style={{ display: "flex", gap: 12, background: sf, borderRadius: 8, padding: "10px 14px" }}>
+                                <span style={{ color: td, fontSize: 12, minWidth: 180, flexShrink: 0 }}>{label}</span>
+                                <span style={{ color: tm, fontSize: 13, lineHeight: 1.5 }}>{val}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                )}
+
+                {anamneseMode === "upload" && (
+                  <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 20 }}>
+                    <div style={{ color: ac, fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Uploader l'anamnèse de {selected.prenom}</div>
+                    <p style={{ color: td, fontSize: 13, marginBottom: 14 }}>Uploade le PDF ou la photo de son questionnaire papier.</p>
+                    <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadAnamnesePDF(Array.from(e.target.files))} style={{ color: tm, fontSize: 13, marginBottom: 12 }} />
+                    {uploadingAnamnese && <div style={{ color: ac, fontSize: 13, margin: "8px 0" }}>Upload en cours...</div>}
+                    {uploadedAnamnese.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        {uploadedAnamnese.map((f, i) => (
+                          <div key={i} style={{ color: ac, fontSize: 13, marginBottom: 4 }}>✓ {f.name}</div>
+                        ))}
+                        <button onClick={saveAnamnesePDF} disabled={savingAnamnese} style={{ ...btn("primary"), marginTop: 10 }}>
+                          {savingAnamnese ? "Enregistrement..." : "Enregistrer dans le dossier"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Documents */}
             {activeTab === "documents" && (
               <div>
                 {documents.length === 0
-                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore uploade de documents.</div>
+                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>Aucun document partagé par {selected.prenom}.</div>
                   : documents.map(d => (
                     <div key={d.id} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, marginBottom: 12 }}>
                       <div style={{ color: td, fontSize: 12, marginBottom: 10 }}>{new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                         {d.files && d.files.map((f, i) => (
                           <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ad, border: "1px solid " + ab, borderRadius: 8, padding: "8px 14px", color: ac, fontSize: 13, textDecoration: "none" }}>
-                            {f.type && f.type.includes("image") ? "Image" : "PDF"} - {f.name}
+                            {f.type && f.type.includes("image") ? "🖼 " : "📄 "}{f.name}
                           </a>
                         ))}
                       </div>
@@ -711,16 +954,20 @@ function Praticienne({ user, onLogout }) {
               </div>
             )}
 
+            {/* Message */}
             {activeTab === "message" && (
               <div>
+                {messages.length === 0 && <div style={{ color: td, fontSize: 14, marginBottom: 16 }}>Aucun message envoyé à {selected.prenom}.</div>}
                 {messages.map(m => (
                   <div key={m.id} style={{ background: wd, border: "1px solid rgba(200,149,108,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 8 }}>
                     <p style={{ color: tx, fontSize: 14, lineHeight: 1.6 }}>{m.text}</p>
                     <div style={{ color: td, fontSize: 11, marginTop: 6 }}>{new Date(m.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</div>
                   </div>
                 ))}
-                <textarea value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder={"Message pour " + selected.prenom + "..."} rows={3} style={{ ...iS, resize: "vertical", marginBottom: 10 }} />
-                <button onClick={send} disabled={sending || !newMsg.trim()} style={{ ...btn("warm"), opacity: !newMsg.trim() ? 0.5 : 1 }}>{sending ? "Envoi..." : "Envoyer"}</button>
+                <textarea value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder={`Message pour ${selected.prenom}...`} rows={3} style={{ ...iS, resize: "vertical", marginBottom: 10 }} />
+                <button onClick={send} disabled={sending || !newMsg.trim()} style={{ ...btn("warm"), opacity: !newMsg.trim() ? 0.5 : 1 }}>
+                  {sending ? "Envoi..." : `Envoyer à ${selected.prenom}`}
+                </button>
               </div>
             )}
           </div>
@@ -738,7 +985,7 @@ export default function App() {
     const u = onAuthStateChanged(auth, async fw => {
       if (fw) {
         const d = await getDoc(doc(db, "users", fw.uid));
-        setUser({ uid: fw.uid, email: fw.email, prenom: d.data() ? d.data().prenom : "", role: fw.email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
+        setUser({ uid: fw.uid, email: fw.email, prénom: d.data() ? d.data().prénom : "", role: fw.email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
       } else { setUser(null); }
       setChecking(false);
     });
