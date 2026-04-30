@@ -236,15 +236,13 @@ function Cliente({ user, onLogout }) {
 
         {view === "home" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {!hasAnamnese && (
-              <button onClick={() => setView("anamnese")} style={{ background: wd, border: "1px solid rgba(200,149,108,0.3)", borderRadius: 14, padding: "20px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ color: wm, fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Remplir mon questionnaire de sante</div>
-                  <div style={{ color: tm, fontSize: 13 }}>A faire avant notre premiere consultation</div>
-                </div>
-                <span style={{ fontSize: 22 }}>{">"}</span>
-              </button>
-            )}
+            <button onClick={() => setView("anamnese")} style={{ background: wd, border: "1px solid rgba(200,149,108,0.3)", borderRadius: 14, padding: "20px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ color: wm, fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Mon questionnaire de sante</div>
+                <div style={{ color: tm, fontSize: 13 }}>{hasAnamnese ? "Consulter ou modifier mes reponses" : "A remplir avant notre premiere consultation"}</div>
+              </div>
+              <span style={{ fontSize: 22 }}>{">"}</span>
+            </button>
             <button onClick={() => setView("new")} style={{ background: ad, border: "1px solid " + ab, borderRadius: 14, padding: "20px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ color: ac, fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Remplir mon suivi de la semaine</div>
@@ -332,7 +330,7 @@ function Cliente({ user, onLogout }) {
               <textarea value={humeur} onChange={e => setHumeur(e.target.value)} placeholder="Fatiguee, stressee, plutot bien..." rows={3} style={{ ...iS, resize: "vertical" }} />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Confidences pour Meije</label>
+              <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Tu as quelque chose a ajouter ?</label>
               <textarea value={confidences} onChange={e => setConfidences(e.target.value)} placeholder="Un detail, une question, quelque chose qui s est passe cette semaine..." rows={4} style={{ ...iS, resize: "vertical" }} />
             </div>
 
