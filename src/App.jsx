@@ -11,13 +11,12 @@ const UPLOAD_PRESET = "meije_naturo";
 const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je ne sais pas"];
 
 const TI = [
-  { key: "sommeil", label: "Sommeil", question: "Comment tu as dormi ?" },
-  { key: "cycle", label: "Cycle", question: "Ou en es-tu dans ton cycle ?" },
-  { key: "digestion", label: "Digestion", question: "Comment etait ta digestion ?" },
-  { key: "energie", label: "Energie", question: "Ton niveau d energie ?" },
-  { key: "douleurs", label: "Douleurs", question: "Des douleurs cette semaine ?" },
-  { key: "humeur", label: "Humeur", question: "Tu etais comment emotionnellement ?" },
-  { key: "alimentation", label: "Alimentation", question: "Tu as mange comment cette semaine ?" },
+  { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment tu as dormi cette semaine ?" },
+  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment tu as digere cette semaine ?" },
+  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau energie ?" },
+  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens niveau douleurs ?" },
+  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens emotionnellement ?" },
+  { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment tu as mange cette semaine ?" },
 ];
 
 const SC = [
@@ -287,19 +286,19 @@ function Cliente({ user, onLogout }) {
 
             {/* Cycle */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>Ou en es-tu dans ton cycle ?</div>
+              <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>🌸 Ou en es-tu dans ton cycle cette semaine ?</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                 {PHASES_CYCLE.map(p => (
                   <button key={p} onClick={() => setCyclePhase(p)} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (cyclePhase === p ? ac : bd), background: cyclePhase === p ? ad : "transparent", color: cyclePhase === p ? ac : tm, cursor: "pointer", fontSize: 13, fontFamily: "sans-serif" }}>{p}</button>
                 ))}
               </div>
-              <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Precisions sur ton cycle cette semaine (douleurs, duree des regles, SPM...)" rows={2} style={{ ...iS, resize: "vertical" }} />
+              <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Precisions sur ton cycle (douleurs, duree des regles, SPM...)" rows={2} style={{ ...iS, resize: "vertical" }} />
             </div>
 
             {/* Autres questions avec score + note */}
             {TI.map(item => (
               <div key={item.key} style={{ marginBottom: 24 }}>
-                <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>{item.question}</div>
+                <div style={{ color: tx, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>{item.icon} {item.question}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                   {SC.map(s => (
                     <button key={s.v} onClick={() => setScores(p => ({ ...p, [item.key]: s.v }))} style={{ padding: "8px 14px", borderRadius: 20, border: "2px solid " + (scores[item.key] === s.v ? s.color : bd), background: scores[item.key] === s.v ? s.color + "22" : "transparent", color: scores[item.key] === s.v ? s.color : tm, cursor: "pointer", fontSize: 13, fontWeight: scores[item.key] === s.v ? 700 : 400, fontFamily: "sans-serif" }}>{s.v} - {s.label}</button>
