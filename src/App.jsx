@@ -544,6 +544,7 @@ function Praticienne({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("dossier");
   const [protocoles2, setProtocoles2] = useState([]);
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
+  const getDefaultMessage = (prenom) => `Bonjour ${prenom},\n\nSuite à notre consultation, je t'ai préparé ton protocole personnalisé. Tu le trouveras ci-dessous.\n\nN'hésite pas à me contacter si tu as des questions.\n\nPrends soin de toi 🌿\nMeije`;
   const [sendingProtocole, setSendingProtocole] = useState(false);
   const [newComplement, setNewComplement] = useState({ nom: "", lien: "" });
   const [savingComplements, setSavingComplements] = useState(false);
@@ -574,6 +575,7 @@ function Praticienne({ user, onLogout }) {
 
   const select = c => {
     setSelected(c); setNewMsg(""); setActiveTab("dossier"); setAnamneseMode("view");
+    setNewProtocole({ titre: "", contenu: getDefaultMessage(c.prenom) });
     const userRef = doc(db, "users", c.uid);
     onSnapshot(userRef, d => setClientData(d.data()));
     const q = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
@@ -653,7 +655,7 @@ function Praticienne({ user, onLogout }) {
   };
 
   const sendProtocole = async () => {
-    if (!newProtocole.titre.trim()) return;
+    if (!newProtocole.titre.trim() && protocoleFiles.length === 0) return;
     setSendingProtocole(true);
     await addDoc(collection(db, "protocoles"), {
       toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom,
@@ -1015,8 +1017,8 @@ function Praticienne({ user, onLogout }) {
                     <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Ex : Protocole phase 1 - Système nerveux" style={iS} />
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Contenu</label>
-                    <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Rédige le protocole complet ici..." rows={12} style={{ ...iS, resize: "vertical" }} />
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Message d'accompagnement</label>
+                    <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Message personnalisé pour ta consultante..." rows={10} style={{ ...iS, resize: "vertical" }} />
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Fichiers joints (PDF, images)</label>
