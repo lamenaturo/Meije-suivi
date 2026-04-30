@@ -72,7 +72,7 @@ function Toast({ message, onClose }) {
   }, [onClose]);
   return (
     <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#7EC8A0", color: "#0c0f0e", padding: "12px 24px", borderRadius: 12, fontFamily: "sans-serif", fontSize: 14, fontWeight: 600, zIndex: 9999, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-      <span>✓</span> {message}
+      <span>✅</span> {message}
     </div>
   );
 }
