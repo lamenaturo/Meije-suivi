@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -99,7 +99,49 @@ const THYROIDE_SYMPTOMS = [
 ];
 
 
-export default function Anamnese({ user, onDone }) {
+export default function Anamnese({ user, onDone, readonly, existingData }) {
+  if (readonly && existingData) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, padding: "28px 20px", fontFamily: "sans-serif" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <button onClick={onDone} style={{ background: "none", border: "1px solid " + C.bd, borderRadius: 8, padding: "6px 14px", color: C.tm, cursor: "pointer", fontFamily: "sans-serif", fontSize: 12 }}>Retour</button>
+            <h1 style={{ fontFamily: "serif", fontSize: 22, color: C.tx, fontWeight: 700 }}>Mon questionnaire de sante</h1>
+          </div>
+          <div style={{ background: C.ad, border: "1px solid " + C.ab, borderRadius: 12, padding: 14, marginBottom: 20 }}>
+            <div style={{ color: C.ac, fontSize: 13 }}>Soumis le {new Date(existingData.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+          </div>
+          {existingData.form && Object.entries({
+            "Problematique principale": existingData.form.problematique,
+            "Duree du probleme": existingData.form.dureeProbleme,
+            "Objectifs 3 mois": existingData.form.objectifs3mois,
+            "Antecedents medicaux": existingData.form.maladiesChroniques,
+            "Medicaments": existingData.form.medicaments,
+            "Complements actuels": existingData.form.complementsActuels,
+            "Heure coucher": existingData.form.heureCoucher,
+            "Heure lever": existingData.form.heureLever,
+            "Qualite sommeil": existingData.form.qualiteSommeil && (existingData.form.qualiteSommeil + " /10"),
+            "Niveau stress": existingData.form.niveauStress && (existingData.form.niveauStress + " /10"),
+            "Sources de stress": existingData.form.sourcesStress,
+            "Age premieres regles": existingData.form.ageRegles,
+            "Duree cycle": existingData.form.dureeCycle,
+            "Intensite douleurs": existingData.form.intensiteDouleurs && (existingData.form.intensiteDouleurs + " /10"),
+          }).filter(([_, v]) => v).map(([label, val]) => (
+            <div key={label} style={{ display: "flex", gap: 12, background: C.sf, borderRadius: 8, padding: "10px 14px", marginBottom: 6 }}>
+              <span style={{ color: C.td, fontSize: 12, minWidth: 160, flexShrink: 0 }}>{label}</span>
+              <span style={{ color: C.tm, fontSize: 13 }}>{val}</span>
+            </div>
+          ))}
+          {existingData.thyroideScore !== undefined && (
+            <div style={{ background: C.ad, border: "1px solid " + C.ab, borderRadius: 12, padding: 14, marginTop: 16 }}>
+              <div style={{ color: C.ac, fontWeight: 700 }}>Score thyroide : {existingData.thyroideScore} / 23</div>
+              <div style={{ color: C.tm, fontSize: 13 }}>{existingData.thyroideInterpretation}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
   const STORAGE_KEY = "anamnese_" + user.uid;
   const STEP_KEY = "anamnese_step_" + user.uid;
   const [step, setStep] = useState(() => { try { return parseInt(sessionStorage.getItem(STEP_KEY) || "0"); } catch { return 0; } });
@@ -172,6 +214,14 @@ export default function Anamnese({ user, onDone }) {
   });
 
   const update = (key, val) => { setForm(f => { const nf = { ...f, [key]: val }; try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nf)); } catch {} return nf; }); };
+
+  // Sauvegarde automatique toutes les 30 secondes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form)); } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [form, STORAGE_KEY]);
 
   const thyroideScore = form.symptomesThyroide.length;
   const thyroideInterpretation = thyroideScore <= 5 ? "Risque faible" :
