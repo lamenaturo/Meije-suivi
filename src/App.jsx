@@ -7,6 +7,9 @@ import Anamnese from "./Anamnese";
 const PRATICIENNE_EMAIL = "lamenaturo@gmail.com";
 const CLOUD_NAME = "di45b4ymc";
 const UPLOAD_PRESET = "meije_naturo";
+const EMAILJS_SERVICE = "service_5bi57sr";
+const EMAILJS_TEMPLATE = "template_3w471uo";
+const EMAILJS_PUBLIC = "zpxiv3rkIbtfdqAQ6";
 
 const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je ne sais pas"];
 
@@ -515,6 +518,17 @@ function Praticienne({ user, onLogout }) {
       titre: newProtocole.titre.trim(), contenu: newProtocole.contenu.trim(),
       date: new Date().toISOString(),
     });
+    // Envoyer email de notification
+    try {
+      if (window.emailjs) {
+        window.emailjs.init(EMAILJS_PUBLIC);
+        await window.emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+          prenom: selected.prenom,
+          email: selected.email,
+          titre: newProtocole.titre.trim(),
+        });
+      }
+    } catch (e) { console.error("Email non envoye:", e); }
     setNewProtocole({ titre: "", contenu: "" });
     setSendingProtocole(false);
   };
@@ -999,6 +1013,7 @@ export default function App() {
   return (
     <>
       <style>{"* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #0c0f0e; } button:hover { opacity: 0.88; }"}</style>
+      <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
       {!user ? <Auth onLogin={setUser} /> : user.role === "praticienne" ? <Praticienne user={user} onLogout={logout} /> : <Cliente user={user} onLogout={logout} />}
     </>
   );
