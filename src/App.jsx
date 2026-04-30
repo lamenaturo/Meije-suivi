@@ -756,7 +756,7 @@ export default function App() {
 
   if (checking) return <div style={{ minHeight: "100vh", background: "#0c0f0e", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: "rgba(255,255,255,0.3)", fontFamily: "sans-serif" }}>Chargement...</div></div>;
 
-  return (
+  return ( 
     <>
       <style>{"* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #0c0f0e; } button:hover { opacity: 0.88; }"}</style>
       {!user ? <Auth onLogin={setUser} /> : user.role === "praticienne" ? <Praticienne user={user} onLogout={logout} /> : <Cliente user={user} onLogout={logout} />}
