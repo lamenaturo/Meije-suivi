@@ -261,7 +261,7 @@ export default function Anamnese({ user, onDone, readonly, existingData }) {
     setSaved(true);
     setSaving(false);
     try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STEP_KEY); } catch {}
-    setTimeout(() => onDone(), 2000);
+    setTimeout(() => onDone(), 2500);
   };
 
   const STEPS = [
