@@ -13,9 +13,9 @@ const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Luteale", "Je
 const TI = [
   { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment tu as dormi cette semaine ?" },
   { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment tu as digere cette semaine ?" },
-  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens niveau energie ?" },
-  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens niveau douleurs ?" },
-  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens emotionnellement ?" },
+  { key: "energie", label: "Energie", icon: "⚡", question: "Comment tu te sens au niveau de ton energie ?" },
+  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment tu te sens au niveau des douleurs ?" },
+  { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment tu te sens emotionnellement cette semaine ?" },
   { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment tu as mange cette semaine ?" },
 ];
 
@@ -143,6 +143,7 @@ function Cliente({ user, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
   const [complements, setComplements] = useState([]);
+  const [protocoles, setProtocoles] = useState([]);
   const [view, setView] = useState("home");
   const [scores, setScores] = useState({});
   const [notes, setNotes] = useState({});
@@ -163,9 +164,11 @@ function Cliente({ user, onLogout }) {
     const u2 = onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", user.uid), orderBy("date", "asc"));
     const u3 = onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const q5 = query(collection(db, "protocoles"), where("toUid", "==", user.uid), orderBy("date", "asc"));
+    const u5 = onSnapshot(q5, s => setProtocoles(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const userRef = doc(db, "users", user.uid);
     const u4 = onSnapshot(userRef, d => { if (d.data() && d.data().complements) setComplements(d.data().complements); });
-    return () => { u(); u2(); u3(); u4(); };
+    return () => { u(); u2(); u3(); u4(); u5(); };
   }, [user.uid]);
 
   const wk = () => {
@@ -249,6 +252,15 @@ function Cliente({ user, onLogout }) {
               </div>
               <span style={{ fontSize: 22 }}>{">"}</span>
             </button>
+            {protocoles.length > 0 && (
+              <button onClick={() => setView("protocoles")} style={{ background: "rgba(155,140,196,0.1)", border: "1px solid rgba(155,140,196,0.25)", borderRadius: 14, padding: "18px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ color: "#9B8EC4", fontWeight: 700, fontSize: 16, marginBottom: 3 }}>Mon protocole</div>
+                  <div style={{ color: tm, fontSize: 13 }}>{protocoles.length} protocole{protocoles.length > 1 ? "s" : ""} recu{protocoles.length > 1 ? "s" : ""}</div>
+                </div>
+                <span style={{ fontSize: 20 }}>{">"}</span>
+              </button>
+            )}
             {entries.length > 0 && (
               <button onClick={() => setView("history")} style={{ background: sf, border: "1px solid " + bd, borderRadius: 14, padding: "18px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
@@ -258,6 +270,13 @@ function Cliente({ user, onLogout }) {
                 <span style={{ fontSize: 20 }}>{">"}</span>
               </button>
             )}
+            <button onClick={() => setView("documents")} style={{ background: sf, border: "1px solid " + bd, borderRadius: 14, padding: "18px 22px", cursor: "pointer", textAlign: "left", color: tx, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3 }}>Mes documents</div>
+                <div style={{ color: tm, fontSize: 13 }}>Uploader bilans, ordonnances, photos...</div>
+              </div>
+              <span style={{ fontSize: 20 }}>{">"}</span>
+            </button>
           </div>
         )}
 
@@ -332,6 +351,49 @@ function Cliente({ user, onLogout }) {
           </div>
         )}
 
+        {view === "documents" && (
+          <div>
+            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
+            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 8 }}>Mes documents</h2>
+            <p style={{ color: tm, fontSize: 13, marginBottom: 20 }}>Uploade tes bilans sanguins, ordonnances, photos... Meije les recevra directement.</p>
+            <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 20, marginBottom: 20 }}>
+              <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadDocs(Array.from(e.target.files))} style={{ color: tm, fontSize: 13 }} />
+              {uploadingDocs && <div style={{ color: ac, fontSize: 13, marginTop: 10 }}>Upload en cours...</div>}
+              {docs.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  {docs.map((d, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: ad, borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+                      <span style={{ color: ac, fontSize: 12 }}>ok</span>
+                      <span style={{ color: tm, fontSize: 13 }}>{d.name}</span>
+                    </div>
+                  ))}
+                  <button onClick={async () => {
+                    await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, userPrenom: user.prenom, date: new Date().toISOString(), files: docs });
+                    setDocs([]);
+                    alert("Documents envoyes a Meije !");
+                  }} style={{ ...btn("primary"), marginTop: 12, width: "100%" }}>Envoyer a Meije</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === "protocoles" && (
+          <div>
+            <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
+            <h2 style={{ fontFamily: "serif", fontSize: 20, color: tx, marginBottom: 20 }}>Mon protocole</h2>
+            {[...protocoles].reverse().map(p => (
+              <div key={p.id} style={{ background: "rgba(155,140,196,0.08)", border: "1px solid rgba(155,140,196,0.2)", borderRadius: 14, padding: 20, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ color: "#9B8EC4", fontWeight: 700, fontSize: 17 }}>{p.titre}</div>
+                  <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</div>
+                </div>
+                <p style={{ color: tm, fontSize: 14, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {view === "history" && (
           <div>
             <button onClick={() => setView("home")} style={{ ...btn("ghost"), fontSize: 12, padding: "6px 14px", marginBottom: 20 }}>Retour</button>
@@ -367,10 +429,14 @@ function Praticienne({ user, onLogout }) {
   const [entries, setEntries] = useState([]);
   const [messages, setMessages] = useState([]);
   const [anamneses, setAnamneses] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("suivi");
+  const [protocoles, setProtocoles] = useState([]);
+  const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
+  const [sendingProtocole, setSendingProtocole] = useState(false);
   const [newComplement, setNewComplement] = useState("");
   const [savingComplements, setSavingComplements] = useState(false);
 
@@ -390,6 +456,10 @@ function Praticienne({ user, onLogout }) {
     onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const q4 = query(collection(db, "protocoles"), where("toUid", "==", c.uid), orderBy("date", "asc"));
+    onSnapshot(q4, s => setProtocoles(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const q4 = query(collection(db, "documents"), where("userUid", "==", c.uid), orderBy("date", "asc"));
+    onSnapshot(q4, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))));
   };
 
   const addComplement = async () => {
@@ -405,6 +475,18 @@ function Praticienne({ user, onLogout }) {
     const current = clientData && clientData.complements ? clientData.complements : [];
     const updated = current.filter((_, i) => i !== idx);
     await updateDoc(doc(db, "users", selected.uid), { complements: updated });
+  };
+
+  const sendProtocole = async () => {
+    if (!newProtocole.titre.trim() || !newProtocole.contenu.trim()) return;
+    setSendingProtocole(true);
+    await addDoc(collection(db, "protocoles"), {
+      toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom,
+      titre: newProtocole.titre.trim(), contenu: newProtocole.contenu.trim(),
+      date: new Date().toISOString(),
+    });
+    setNewProtocole({ titre: "", contenu: "" });
+    setSendingProtocole(false);
   };
 
   const send = async () => {
@@ -449,8 +531,8 @@ function Praticienne({ user, onLogout }) {
             <div style={{ color: td, fontSize: 13, marginBottom: 20 }}>{selected.email}</div>
 
             <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 24, flexWrap: "wrap" }}>
-              {[["suivi", "Suivis"], ["complements", "Complements"], ["anamnese", "Questionnaire"], ["message", "Message"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ flex: 1, minWidth: 80, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? (key === "message" ? wd : ad) : "transparent", color: activeTab === key ? (key === "message" ? wm : ac) : td }}>{label}</button>
+              {[["suivi", "Suivis"], ["complements", "Complements"], ["protocole", "Protocole"], ["anamnese", "Questionnaire"], ["documents", "Documents"], ["message", "Message"]].map(([key, label]) => (
+                <button key={key} onClick={() => setActiveTab(key)} style={{ flex: 1, minWidth: 80, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer", fontFamily: "sans-serif", fontSize: 12, fontWeight: 600, background: activeTab === key ? (key === "message" ? wd : key === "protocole" ? "rgba(155,140,196,0.15)" : ad) : "transparent", color: activeTab === key ? (key === "message" ? wm : key === "protocole" ? "#9B8EC4" : ac) : td }}>{label}</button>
               ))}
             </div>
 
@@ -573,6 +655,63 @@ function Praticienne({ user, onLogout }) {
                           ))}
                         </div>
                       )}
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+
+            {activeTab === "protocole" && (
+              <div>
+                <div style={{ color: tx, fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Protocoles envoyes a {selected.prenom}</div>
+
+                {/* Protocoles existants */}
+                {protocoles.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    {[...protocoles].reverse().map(p => (
+                      <div key={p.id} style={{ background: "rgba(155,140,196,0.08)", border: "1px solid rgba(155,140,196,0.2)", borderRadius: 12, padding: 18, marginBottom: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <div style={{ color: "#9B8EC4", fontWeight: 700, fontSize: 15 }}>{p.titre}</div>
+                          <div style={{ color: td, fontSize: 11 }}>{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+                        </div>
+                        <p style={{ color: tm, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Nouveau protocole */}
+                <div style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18 }}>
+                  <div style={{ color: ac, fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Envoyer un nouveau protocole</div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Titre du protocole</label>
+                    <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Ex: Protocole phase 1 - Systeme nerveux" style={iS} />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ color: td, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6 }}>Contenu du protocole</label>
+                    <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Redige le protocole complet ici..." rows={12} style={{ ...iS, resize: "vertical" }} />
+                  </div>
+                  <button onClick={sendProtocole} disabled={sendingProtocole || !newProtocole.titre.trim() || !newProtocole.contenu.trim()} style={{ ...btn("primary"), opacity: !newProtocole.titre.trim() ? 0.5 : 1 }}>
+                    {sendingProtocole ? "Envoi..." : "Envoyer le protocole a " + selected.prenom}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "documents" && (
+              <div>
+                {documents.length === 0
+                  ? <div style={{ color: td, background: sf, borderRadius: 12, padding: 20, fontSize: 14 }}>{selected.prenom} n a pas encore uploade de documents.</div>
+                  : documents.map(d => (
+                    <div key={d.id} style={{ background: sf, borderRadius: 12, border: "1px solid " + bd, padding: 18, marginBottom: 12 }}>
+                      <div style={{ color: td, fontSize: 12, marginBottom: 10 }}>{new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {d.files && d.files.map((f, i) => (
+                          <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ad, border: "1px solid " + ab, borderRadius: 8, padding: "8px 14px", color: ac, fontSize: 13, textDecoration: "none" }}>
+                            {f.type && f.type.includes("image") ? "Image" : "PDF"} - {f.name}
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   ))
                 }
