@@ -8,7 +8,7 @@ const firebaseConfig = {
   projectId: "meije-naturo",
   storageBucket: "meije-naturo.firebasestorage.app",
   messagingSenderId: "354199771986",
-  appId: "1:354199771986:web:b44f3f10de"
+  appId: "1:354199771986:web:b44f3f10d671dd4b9f388b"
 };
 
 const app = initializeApp(firebaseConfig);
