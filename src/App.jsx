@@ -53,20 +53,20 @@ const P = {
   pGreen: "#7A9E82",       // sauge
   pGreenDim: "rgba(122,158,130,0.15)",
 
-  // Cliente — Écorce claire (palette D)
-  cBg: "#C9B8A0",
-  cSurface: "#DDD0BA",
-  cSurface2: "#BFAB90",
-  cNavBg: "#A89070",         // barre nav foncée
-  cBorder: "rgba(28,16,8,0.12)",
-  cBorder2: "rgba(28,16,8,0.22)",
-  cText: "#1C1008",
-  cTextMid: "rgba(28,16,8,0.6)",
-  cTextDim: "rgba(28,16,8,0.42)",
+  // Cliente — crème chaud contrasté
+  cBg: "#E8DDD0",
+  cSurface: "#F5EDE2",
+  cSurface2: "#DDD0C0",
+  cNavBg: "#8A7560",
+  cBorder: "rgba(44,28,12,0.13)",
+  cBorder2: "rgba(44,28,12,0.22)",
+  cText: "#1E1208",
+  cTextMid: "rgba(30,18,8,0.6)",
+  cTextDim: "rgba(30,18,8,0.38)",
   cAccent: "#8A5A2A",
-  cGreen: "#5A8A6A",
-  cGreenDim: "rgba(90,138,106,0.15)",
-  cGreenBorder: "rgba(90,138,106,0.3)",
+  cGreen: "#4A7A5A",
+  cGreenDim: "rgba(74,122,90,0.15)",
+  cGreenBorder: "rgba(74,122,90,0.3)",
   cTerra: "#B5583A",
   cTerraDim: "rgba(181,88,58,0.12)",
 
@@ -745,17 +745,27 @@ function Cliente({ user, onLogout }) {
     return () => { u(); u2(); u3(); u4(); u5(); u6(); };
   }, [user.uid]);
 
+  const uploadToCloudinaryClient = async (file, folder) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", folder);
+    const endpoint = file.type === "application/pdf" ? "raw" : "image";
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    const data = await res.json();
+    if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
+    return { url: data.secure_url, name: file.name, type: file.type };
+  };
+
   const doUploadDocs = async (files) => {
     setUploadingDocs(true);
     const uploaded = [];
     for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file); fd.append("upload_preset", UPLOAD_PRESET); fd.append("folder", "meije-naturo/suivis");
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
-        const data = await res.json();
-        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
-      } catch {}
+        const result = await uploadToCloudinaryClient(file, "meije-naturo/suivis");
+        uploaded.push(result);
+      } catch (e) { showToast("Erreur upload : " + e.message); }
     }
     setUploadDocs(prev => [...prev, ...uploaded]);
     setUploadingDocs(false);
@@ -1466,17 +1476,28 @@ function Praticienne({ user, onLogout }) {
     showToast("Complément mis à jour ✓");
   };
 
+  const uploadToCloudinary = async (file, folder) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", folder);
+    const isPDF = file.type === "application/pdf";
+    const endpoint = isPDF ? "raw" : "image";
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    const data = await res.json();
+    if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
+    return { url: data.secure_url, name: file.name, type: file.type };
+  };
+
   const uploadProtocoleFiles = async (files) => {
     setUploadingProtocole(true);
     const uploaded = [];
     for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file); fd.append("upload_preset", UPLOAD_PRESET); fd.append("folder", "meije-naturo/protocoles");
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
-        const data = await res.json();
-        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
-      } catch {}
+        const result = await uploadToCloudinary(file, "meije-naturo/protocoles");
+        uploaded.push(result);
+      } catch (e) { showToast("Erreur upload : " + e.message); }
     }
     setProtocoleFiles(prev => [...prev, ...uploaded]);
     setUploadingProtocole(false);
@@ -1511,22 +1532,10 @@ function Praticienne({ user, onLogout }) {
     setUploadingAnamnese(true);
     const uploaded = [];
     for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("upload_preset", UPLOAD_PRESET);
-      fd.append("folder", "meije-naturo/anamneses");
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
-        if (!res.ok) throw new Error("Erreur serveur " + res.status);
-        const data = await res.json();
-        if (data.secure_url) {
-          uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
-        } else {
-          showToast("Erreur upload : " + (data.error?.message || "inconnu"));
-        }
-      } catch (e) {
-        showToast("Erreur upload : " + e.message);
-      }
+        const result = await uploadToCloudinary(file, "meije-naturo/anamneses");
+        uploaded.push(result);
+      } catch (e) { showToast("Erreur upload : " + e.message); }
     }
     setUploadedAnamnese(prev => [...prev, ...uploaded]);
     setUploadingAnamnese(false);
