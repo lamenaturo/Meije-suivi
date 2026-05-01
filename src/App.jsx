@@ -851,11 +851,15 @@ function Cliente({ user, onLogout }) {
               {complements.map((c, i) => {
                 const nom = typeof c === "string" ? c : c.nom;
                 const lien = typeof c === "string" ? "" : c.lien;
+                const posologie = typeof c === "string" ? "" : c.posologie;
+                const codePromo = typeof c === "string" ? "" : c.codePromo;
                 return (
-                  <div key={i} style={{ marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <span style={{ color: P.cText, fontSize: 13 }}>{nom}</span>
-                      {lien && <a href={lien} target="_blank" rel="noreferrer" style={{ color: P.cGreen, fontSize: 11, textDecoration: "none" }}>→ Commander</a>}
+                  <div key={i} style={{ marginBottom: 14, background: P.cSurface, border: `1px solid ${P.cBorder}`, borderRadius: 12, padding: "12px 14px" }}>
+                    <p style={{ color: P.cText, fontSize: 14, fontWeight: 500, marginBottom: posologie ? 4 : 8 }}>{nom}</p>
+                    {posologie && <p style={{ color: P.cAccent, fontSize: 12, marginBottom: 8 }}>💊 {posologie}</p>}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                      {lien && <a href={lien} target="_blank" rel="noreferrer" style={{ color: P.cGreen, fontSize: 12, textDecoration: "none" }}>→ Commander</a>}
+                      {codePromo && <span style={{ background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 6, padding: "2px 8px", color: P.cGreen, fontSize: 11, fontWeight: 500 }}>🏷 Code : {codePromo}</span>}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {["Pris régulièrement", "Pris irrégulièrement", "Pas pris"].map(opt => {
@@ -1281,9 +1285,9 @@ function Praticienne({ user, onLogout }) {
     if (!newComplement.nom.trim()) return;
     setSavingComplements(true);
     const current = clientData?.complements || [];
-    const item = { nom: newComplement.nom.trim(), lien: newComplement.lien.trim() };
+    const item = { nom: newComplement.nom.trim(), lien: newComplement.lien.trim(), posologie: newComplement.posologie?.trim() || "", codePromo: newComplement.codePromo?.trim() || "" };
     await updateDoc(doc(db, "users", selected.uid), { complements: [...current, item] });
-    setNewComplement({ nom: "", lien: "" });
+    setNewComplement({ nom: "", lien: "", posologie: "", codePromo: "" });
     setSavingComplements(false);
     showToast("Complément ajouté ✓");
   };
@@ -1393,9 +1397,12 @@ function Praticienne({ user, onLogout }) {
             </p>
             <p style={{ fontSize: 10, color: P.pAccent, letterSpacing: "2px", textTransform: "uppercase", marginTop: 1 }}>Espace praticienne</p>
           </div>
-          {selected && mainView === "fiche" && (
-            <button onClick={() => { setSelected(null); setMainView("clients"); }} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 14px", color: P.pTextMid, fontSize: 12, fontFamily: P.sans }}>← Retour</button>
-          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {selected && mainView === "fiche" && (
+              <button onClick={() => { setSelected(null); setMainView("clients"); }} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 14px", color: P.pTextMid, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>← Retour</button>
+            )}
+            <button onClick={onLogout} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>Déconnexion</button>
+          </div>
         </div>
       </div>
 
@@ -1678,21 +1685,31 @@ function Praticienne({ user, onLogout }) {
                 ? clientData.complements.map((c, i) => {
                   const nom = typeof c === "string" ? c : c.nom;
                   const lien = typeof c === "string" ? "" : c.lien;
+                  const posologie = typeof c === "string" ? "" : c.posologie;
+                  const codePromo = typeof c === "string" ? "" : c.codePromo;
                   return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: P.pSurface, borderRadius: 10, padding: "12px 16px", marginBottom: 8, border: `1px solid ${P.pBorder}` }}>
-                      <div>
-                        <span style={{ color: P.pText, fontSize: 14 }}>{nom}</span>
-                        {lien && <a href={lien} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginLeft: 10, color: P.pGreen, fontSize: 12, textDecoration: "none" }}>→ Commander</a>}
+                    <div key={i} style={{ background: P.pSurface, borderRadius: 10, padding: "12px 16px", marginBottom: 8, border: `1px solid ${P.pBorder}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ color: P.pText, fontSize: 14, fontWeight: 500, marginBottom: posologie ? 4 : 0 }}>{nom}</p>
+                          {posologie && <p style={{ color: P.pAccent, fontSize: 12, marginBottom: 4 }}>💊 {posologie}</p>}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                            {lien && <a href={lien} target="_blank" rel="noreferrer" style={{ color: P.pGreen, fontSize: 12, textDecoration: "none" }}>→ Commander</a>}
+                            {codePromo && <span style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 6, padding: "2px 8px", color: P.pAccent, fontSize: 11, fontWeight: 500 }}>🏷 {codePromo}</span>}
+                          </div>
+                        </div>
+                        <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#B5583A", fontSize: 20, lineHeight: 1, cursor: "pointer", flexShrink: 0, marginLeft: 8 }}>×</button>
                       </div>
-                      <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#B5583A", fontSize: 20, lineHeight: 1, cursor: "pointer" }}>×</button>
                     </div>
                   );
                 })
                 : <EmptyState message="Aucun complément ajouté." theme="p" />
               }
               <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                <input value={newComplement.nom} onChange={e => setNewComplement(f => ({ ...f, nom: e.target.value }))} placeholder="Nom — Ex : Magnésium 300 mg/j le soir" style={iP("p")} />
+                <input value={newComplement.nom} onChange={e => setNewComplement(f => ({ ...f, nom: e.target.value }))} placeholder="Nom du complément — Ex : Magnésium bisglycinate" style={iP("p")} />
+                <input value={newComplement.posologie || ""} onChange={e => setNewComplement(f => ({ ...f, posologie: e.target.value }))} placeholder="Posologie — Ex : 2 gél. matin + 2 gél. soir au repas" style={iP("p")} />
                 <input value={newComplement.lien} onChange={e => setNewComplement(f => ({ ...f, lien: e.target.value }))} placeholder="Lien produit (optionnel)" style={iP("p")} />
+                <input value={newComplement.codePromo || ""} onChange={e => setNewComplement(f => ({ ...f, codePromo: e.target.value }))} placeholder="Code promo (optionnel) — Ex : MEIJE10" style={iP("p")} />
                 <Btn onClick={addComplement} disabled={savingComplements} variant="primary" style={{ alignSelf: "flex-start" }}>Ajouter</Btn>
               </div>
             </div>
