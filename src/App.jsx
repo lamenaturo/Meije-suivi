@@ -57,13 +57,14 @@ const P = {
   cBg: "#C9B8A0",
   cSurface: "#DDD0BA",
   cSurface2: "#BFAB90",
+  cNavBg: "#A89070",         // barre nav foncée
   cBorder: "rgba(28,16,8,0.12)",
   cBorder2: "rgba(28,16,8,0.22)",
   cText: "#1C1008",
-  cTextMid: "rgba(28,16,8,0.55)",
-  cTextDim: "rgba(28,16,8,0.38)",
-  cAccent: "#8A5A2A",      // bark chaud
-  cGreen: "#5A8A6A",       // sauge
+  cTextMid: "rgba(28,16,8,0.6)",
+  cTextDim: "rgba(28,16,8,0.42)",
+  cAccent: "#8A5A2A",
+  cGreen: "#5A8A6A",
   cGreenDim: "rgba(90,138,106,0.15)",
   cGreenBorder: "rgba(90,138,106,0.3)",
   cTerra: "#B5583A",
@@ -661,7 +662,7 @@ function ChartSelector({ entries, theme = "c" }) {
 // ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────────────
 
 function BottomNav({ items, active, onChange, theme }) {
-  const bg = theme === "p" ? P.pBg : P.cSurface;
+  const bg = theme === "p" ? P.pBg : (P.cNavBg || P.cSurface2);
   const border = theme === "p" ? P.pBorder : P.cBorder;
   const activeColor = theme === "p" ? P.pAccent : P.cGreen;
   const inactiveColor = theme === "p" ? P.pTextDim : P.cTextDim;
@@ -2094,13 +2095,17 @@ function Praticienne({ user, onLogout }) {
               )}
               {anamneseMode === "upload" && (
                 <div style={{ background: P.pSurface, borderRadius: 12, border: `1px solid ${P.pBorder}`, padding: 18 }}>
-                  <label style={{ display: "block", background: P.pAccentDim, border: `1px dashed ${P.pAccentBorder}`, borderRadius: 10, padding: "18px", textAlign: "center", cursor: "pointer", color: P.pAccent, fontSize: 13, marginBottom: 12 }}>
-                    + Uploader un PDF ou une photo
-                    <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadAnamnesePDF(Array.from(e.target.files))} style={{ display: "none" }} />
-                  </label>
-                  {uploadingAnamnese && <p style={{ color: P.pAccent, fontSize: 13, marginBottom: 10 }}>Upload en cours…</p>}
+                  <p style={{ color: P.pTextMid, fontSize: 13, marginBottom: 12 }}>Sélectionne un PDF ou une photo du questionnaire papier :</p>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={e => uploadAnamnesePDF(Array.from(e.target.files))}
+                    style={{ color: P.pTextMid, fontSize: 13, marginBottom: 12, display: "block", width: "100%" }}
+                  />
+                  {uploadingAnamnese && <p style={{ color: P.pAccent, fontSize: 13, marginTop: 10 }}>Upload en cours…</p>}
                   {uploadedAnamnese.length > 0 && (
-                    <div>
+                    <div style={{ marginTop: 12 }}>
                       {uploadedAnamnese.map((f, i) => <FileTag key={i} name={f.name} theme="p" />)}
                       <Btn onClick={saveAnamnesePDF} disabled={savingAnamnese} variant="primary" style={{ marginTop: 12 }}>
                         {savingAnamnese ? "Enregistrement…" : "Enregistrer dans le dossier"}
