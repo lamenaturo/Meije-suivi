@@ -314,7 +314,7 @@ function LandingPage({ onEnter }) {
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 
-function Auth({ onLogin }) {
+function Auth({ onLogin, onBack }) {
   const [mode, setMode] = useState("login");
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [email, setEmail] = useState("");
@@ -367,8 +367,13 @@ function Auth({ onLogin }) {
       background: P.pBg,
       backgroundImage: "radial-gradient(ellipse at 30% 20%, rgba(200,133,108,0.12) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(122,158,130,0.08) 0%, transparent 50%)",
     }}>
-      {/* Logo */}
+      {/* Retour landing + Logo */}
       <div style={{ textAlign: "center", marginBottom: 40, animation: "fadeIn 0.5s ease" }}>
+        {onBack && (
+          <button onClick={onBack} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer", marginBottom: 20, display: "block", margin: "0 auto 20px" }}>
+            ← Retour à l'accueil
+          </button>
+        )}
         <p style={{ fontFamily: P.serif, fontSize: 32, color: P.pText, fontWeight: 300, letterSpacing: "1px", marginBottom: 6 }}>
           meije<span style={{ color: P.pAccent, fontStyle: "italic" }}>.</span>naturo
         </p>
@@ -1952,10 +1957,13 @@ export default function App() {
       {!user
         ? (showLanding
           ? <LandingPage onEnter={() => setShowLanding(false)} />
-          : <Auth onLogin={u => { setUser(u); setShowLanding(false); }} />)
+          : <Auth
+              onLogin={u => { setUser(u); }}
+              onBack={() => setShowLanding(true)}
+            />)
         : user.role === "praticienne"
-          ? <Praticienne user={user} onLogout={logout} />
-          : <Cliente user={user} onLogout={logout} />
+          ? <Praticienne user={user} onLogout={() => { logout(); setShowLanding(true); }} />
+          : <Cliente user={user} onLogout={() => { logout(); setShowLanding(true); }} />
       }
     </>
   );
