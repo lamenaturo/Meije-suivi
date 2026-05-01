@@ -782,59 +782,107 @@ function Cliente({ user, onLogout }) {
       {/* ── HOME ── */}
       {view === "home" && (
         <div style={inner} className="fade-in">
-          {lm && (
-            <div style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cGreen}`, borderRadius: 14, padding: "16px 18px", marginBottom: 20 }}>
-              <p style={{ fontSize: 10, color: P.cGreen, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>Message de Meije</p>
-              <p style={{ color: P.cText, fontSize: 14, lineHeight: 1.7 }}>{lm.text}</p>
-            </div>
-          )}
 
-          {/* Stats rapides */}
+          {/* Salutation + score semaine */}
           {entries.length > 0 && (() => {
             const last = entries[entries.length - 1];
             const vs = TI.map(i => last.scores?.[i.key]).filter(Boolean);
             const avg = vs.length ? (vs.reduce((a, b) => a + b, 0) / vs.length) : null;
             const sc = avg ? SC.find(x => x.v === Math.round(avg)) : null;
             return (
-              <div style={{ background: P.cSurface, borderRadius: 14, border: `1px solid ${P.cBorder}`, padding: "16px 18px", marginBottom: 20, display: "flex", gap: 16, alignItems: "center" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: sc ? sc.color + "22" : P.cSurface2, border: `2px solid ${sc ? sc.color : P.cBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontFamily: P.serif, fontSize: 20, color: sc ? sc.color : P.cTextDim, fontWeight: 400 }}>{avg ? avg.toFixed(1) : "–"}</span>
+              <div style={{ background: P.cSurface, borderRadius: 16, border: `1px solid ${P.cBorder}`, padding: "16px 18px", marginBottom: 16, display: "flex", gap: 14, alignItems: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: sc ? sc.color + "22" : P.cSurface2, border: `2px solid ${sc ? sc.color : P.cBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontFamily: P.serif, fontSize: 18, color: sc ? sc.color : P.cTextDim }}>{avg ? avg.toFixed(1) : "–"}</span>
                 </div>
                 <div>
-                  <p style={{ color: P.cText, fontSize: 14, fontWeight: 500 }}>Dernière semaine</p>
-                  <p style={{ color: P.cTextMid, fontSize: 12, marginTop: 2 }}>{last.weekLabel} · {sc?.label || "–"}</p>
+                  <p style={{ color: P.cText, fontSize: 13, fontWeight: 500 }}>Dernière semaine · {sc?.label || "–"}</p>
+                  <p style={{ color: P.cTextMid, fontSize: 11, marginTop: 2 }}>{last.weekLabel}</p>
                 </div>
               </div>
             );
           })()}
 
-          {/* Cards navigation */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => setAnamneseView(true)} style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderRadius: 14, padding: "18px 20px", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <p style={{ color: P.cAccent, fontFamily: P.serif, fontSize: 17, fontWeight: 400 }}>Mon questionnaire de santé</p>
-                <p style={{ color: P.cTextMid, fontSize: 12, marginTop: 3 }}>{hasAnamnese ? "Consulter ou modifier mes réponses" : "À remplir avant notre première consultation"}</p>
-              </div>
-              <span style={{ color: P.cBorder2, fontSize: 20 }}>›</span>
-            </button>
+          {/* Notifications Meije */}
+          {(() => {
+            const notifs = [];
 
-            {protocoles.length > 0 && (
-              <div style={{ background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 14, padding: "16px 18px" }}>
-                <p style={{ fontSize: 10, color: P.cGreen, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>Mon protocole actuel</p>
-                <p style={{ color: P.cText, fontSize: 14, fontWeight: 500 }}>{protocoles[protocoles.length - 1].titre}</p>
-                <p style={{ color: P.cTextMid, fontSize: 12, marginTop: 4 }}>{new Date(protocoles[protocoles.length - 1].date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
-              </div>
-            )}
-
-            {entries.length > 0 && (
-              <button onClick={() => setView("historique")} style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderRadius: 14, padding: "16px 20px", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <p style={{ color: P.cText, fontSize: 14, fontWeight: 500 }}>Mon historique</p>
-                  <p style={{ color: P.cTextMid, fontSize: 12, marginTop: 2 }}>{entries.length} semaine{entries.length > 1 ? "s" : ""} enregistrée{entries.length > 1 ? "s" : ""}</p>
+            // Nouveau message
+            if (lm) {
+              const isNew = Date.now() - new Date(lm.date).getTime() < 7 * 24 * 60 * 60 * 1000;
+              notifs.push(
+                <div key="msg" style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cGreen}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <p style={{ fontSize: 10, color: P.cGreen, textTransform: "uppercase", letterSpacing: "1.5px" }}>💬 Message de Meije</p>
+                    {isNew && <span style={{ background: P.cGreen, color: "#fff", fontSize: 9, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Nouveau</span>}
+                  </div>
+                  <p style={{ color: P.cText, fontSize: 13, lineHeight: 1.6 }}>{lm.text}</p>
+                  <p style={{ color: P.cTextDim, fontSize: 11, marginTop: 6 }}>{new Date(lm.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
                 </div>
-                <span style={{ color: P.cBorder2, fontSize: 20 }}>›</span>
+              );
+            }
+
+            // Nouveau protocole
+            if (protocoles.length > 0) {
+              const last = protocoles[protocoles.length - 1];
+              const isNew = Date.now() - new Date(last.date).getTime() < 14 * 24 * 60 * 60 * 1000;
+              notifs.push(
+                <button key="proto" onClick={() => setView("protocole")} style={{ width: "100%", background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cAccent}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <p style={{ fontSize: 10, color: P.cAccent, textTransform: "uppercase", letterSpacing: "1.5px" }}>🌿 Protocole mis à jour</p>
+                    {isNew && <span style={{ background: P.cAccent, color: "#fff", fontSize: 9, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Nouveau</span>}
+                  </div>
+                  <p style={{ color: P.cText, fontSize: 13, fontWeight: 500 }}>{last.titre}</p>
+                  <p style={{ color: P.cTextDim, fontSize: 11, marginTop: 4 }}>Voir mon protocole →</p>
+                </button>
+              );
+            }
+
+            // Rappel suivi semaine
+            const lastEntry = entries[entries.length - 1];
+            const daysSinceLastEntry = lastEntry ? Math.floor((Date.now() - new Date(lastEntry.date).getTime()) / (1000 * 60 * 60 * 24)) : 99;
+            if (daysSinceLastEntry >= 6) {
+              notifs.push(
+                <button key="suivi" onClick={() => setView("suivi")} style={{ width: "100%", background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+                  <p style={{ fontSize: 10, color: P.cGreen, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 6 }}>📝 Suivi de la semaine</p>
+                  <p style={{ color: P.cText, fontSize: 13 }}>C'est l'heure de remplir ton suivi !</p>
+                  <p style={{ color: P.cTextDim, fontSize: 11, marginTop: 4 }}>Remplir maintenant →</p>
+                </button>
+              );
+            }
+
+            // Questionnaire manquant
+            if (!hasAnamnese) {
+              notifs.push(
+                <button key="qst" onClick={() => setAnamneseView(true)} style={{ width: "100%", background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cAccent}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+                  <p style={{ fontSize: 10, color: P.cAccent, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 6 }}>📋 Action requise</p>
+                  <p style={{ color: P.cText, fontSize: 13, fontWeight: 500 }}>Remplis ton questionnaire de santé</p>
+                  <p style={{ color: P.cTextDim, fontSize: 11, marginTop: 4 }}>À compléter avant ta première consultation →</p>
+                </button>
+              );
+            }
+
+            return notifs.length > 0
+              ? <div>{notifs}</div>
+              : (
+                <div style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderRadius: 14, padding: "20px", textAlign: "center" }}>
+                  <p style={{ color: P.cTextDim, fontSize: 13 }}>Tout est à jour 🌿</p>
+                </div>
+              );
+          })()}
+
+          {/* Accès rapides discrets */}
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            {entries.length > 0 && (
+              <button onClick={() => setView("historique")} style={{ flex: 1, background: P.cSurface2, border: `1px solid ${P.cBorder}`, borderRadius: 10, padding: "10px", textAlign: "center", cursor: "pointer" }}>
+                <p style={{ color: P.cTextMid, fontSize: 11 }}>📊 Historique</p>
               </button>
             )}
+            <button onClick={() => setView("evolution")} style={{ flex: 1, background: P.cSurface2, border: `1px solid ${P.cBorder}`, borderRadius: 10, padding: "10px", textAlign: "center", cursor: "pointer" }}>
+              <p style={{ color: P.cTextMid, fontSize: 11 }}>📈 Évolution</p>
+            </button>
+            <button onClick={() => setView("docs")} style={{ flex: 1, background: P.cSurface2, border: `1px solid ${P.cBorder}`, borderRadius: 10, padding: "10px", textAlign: "center", cursor: "pointer" }}>
+              <p style={{ color: P.cTextMid, fontSize: 11 }}>📁 Documents</p>
+            </button>
           </div>
         </div>
       )}
@@ -1172,7 +1220,8 @@ function Praticienne({ user, onLogout }) {
   const [mainView, setMainView] = useState("clients");
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const [sendingProtocole, setSendingProtocole] = useState(false);
-  const [newComplement, setNewComplement] = useState({ nom: "", lien: "" });
+  const [newComplement, setNewComplement] = useState({ nom: "", lien: "", posologie: "", codePromo: "" });
+  const [editingComplement, setEditingComplement] = useState(null); // index en cours d'édition
   const [savingComplements, setSavingComplements] = useState(false);
   const [anamneseMode, setAnamneseMode] = useState("view");
   const [uploadedAnamnese, setUploadedAnamnese] = useState([]);
@@ -1295,6 +1344,14 @@ function Praticienne({ user, onLogout }) {
   const removeComplement = async (idx) => {
     const current = clientData?.complements || [];
     await updateDoc(doc(db, "users", selected.uid), { complements: current.filter((_, i) => i !== idx) });
+  };
+
+  const updateComplement = async (idx, updated) => {
+    const current = clientData?.complements || [];
+    const newList = current.map((c, i) => i === idx ? updated : c);
+    await updateDoc(doc(db, "users", selected.uid), { complements: newList });
+    setEditingComplement(null);
+    showToast("Complément mis à jour ✓");
   };
 
   const uploadProtocoleFiles = async (files) => {
@@ -1687,6 +1744,28 @@ function Praticienne({ user, onLogout }) {
                   const lien = typeof c === "string" ? "" : c.lien;
                   const posologie = typeof c === "string" ? "" : c.posologie;
                   const codePromo = typeof c === "string" ? "" : c.codePromo;
+                  const isEditing = editingComplement === i;
+                  const [editNom, setEditNom] = useState ? null : null; // handled via editingComplement object
+
+                  if (isEditing) {
+                    const edited = typeof editingComplement === "object" && editingComplement?.idx === i
+                      ? editingComplement : { idx: i, nom, lien: lien||"", posologie: posologie||"", codePromo: codePromo||"" };
+                    return (
+                      <div key={i} style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <input value={edited.nom} onChange={e => setEditingComplement({ ...edited, nom: e.target.value })} placeholder="Nom" style={{ ...iP("p"), fontSize: 13 }} />
+                          <input value={edited.posologie} onChange={e => setEditingComplement({ ...edited, posologie: e.target.value })} placeholder="Posologie" style={{ ...iP("p"), fontSize: 13 }} />
+                          <input value={edited.lien} onChange={e => setEditingComplement({ ...edited, lien: e.target.value })} placeholder="Lien produit" style={{ ...iP("p"), fontSize: 13 }} />
+                          <input value={edited.codePromo} onChange={e => setEditingComplement({ ...edited, codePromo: e.target.value })} placeholder="Code promo" style={{ ...iP("p"), fontSize: 13 }} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Btn onClick={() => updateComplement(i, { nom: edited.nom, lien: edited.lien, posologie: edited.posologie, codePromo: edited.codePromo })} variant="primary" small>Enregistrer</Btn>
+                            <Btn onClick={() => setEditingComplement(null)} variant="ghost" theme="p" small>Annuler</Btn>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={i} style={{ background: P.pSurface, borderRadius: 10, padding: "12px 16px", marginBottom: 8, border: `1px solid ${P.pBorder}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -1698,7 +1777,10 @@ function Praticienne({ user, onLogout }) {
                             {codePromo && <span style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 6, padding: "2px 8px", color: P.pAccent, fontSize: 11, fontWeight: 500 }}>🏷 {codePromo}</span>}
                           </div>
                         </div>
-                        <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#B5583A", fontSize: 20, lineHeight: 1, cursor: "pointer", flexShrink: 0, marginLeft: 8 }}>×</button>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                          <button onClick={() => setEditingComplement({ idx: i, nom, lien: lien||"", posologie: posologie||"", codePromo: codePromo||"" })} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 13, cursor: "pointer", fontFamily: P.sans }}>✏️</button>
+                          <button onClick={() => removeComplement(i)} style={{ background: "none", border: "none", color: "#B5583A", fontSize: 18, lineHeight: 1, cursor: "pointer" }}>×</button>
+                        </div>
                       </div>
                     </div>
                   );
