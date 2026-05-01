@@ -1935,14 +1935,16 @@ export default function App() {
       if (fw) {
         const d = await getDoc(doc(db, "users", fw.uid));
         setUser({ uid: fw.uid, email: fw.email, prénom: d.data()?.prénom || "", role: fw.email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
-        setShowLanding(false); // déjà connectée, pas besoin de la landing
-      } else { setUser(null); }
+        setShowLanding(false);
+      } else {
+        setUser(null);
+      }
       setChecking(false);
     });
     return u;
   }, []);
 
-  const logout = async () => { await signOut(auth); setUser(null); };
+  const logout = async () => { await signOut(auth); setUser(null); setShowLanding(true); };
 
   if (checking) return (
     <div style={{ minHeight: "100vh", background: P.pBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1958,12 +1960,12 @@ export default function App() {
         ? (showLanding
           ? <LandingPage onEnter={() => setShowLanding(false)} />
           : <Auth
-              onLogin={u => { setUser(u); }}
+              onLogin={() => {}}
               onBack={() => setShowLanding(true)}
             />)
         : user.role === "praticienne"
-          ? <Praticienne user={user} onLogout={() => { logout(); setShowLanding(true); }} />
-          : <Cliente user={user} onLogout={() => { logout(); setShowLanding(true); }} />
+          ? <Praticienne user={user} onLogout={logout} />
+          : <Cliente user={user} onLogout={logout} />
       }
     </>
   );
