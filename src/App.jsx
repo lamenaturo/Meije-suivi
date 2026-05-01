@@ -1244,6 +1244,8 @@ function Praticienne({ user, onLogout }) {
     const { deleteDoc, doc: fd } = await import("firebase/firestore");
     await deleteDoc(fd(db, "notes_privees", id));
   };
+
+  const createClient = async () => {
     if (!newClientForm.prenom || !newClientForm.email || !newClientForm.password) return;
     setCreatingClient(true);
     try {
