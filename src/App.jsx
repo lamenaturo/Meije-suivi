@@ -83,7 +83,26 @@ const GLOBAL_CSS = `
   input, textarea, button, select { font-family: ${P.sans}; }
   input:focus, textarea:focus { outline: none; }
   button { cursor: pointer; }
-  /* Mobile safe area */
+  /* Neo-Tactile shadows */
+  .card-raised {
+    box-shadow: 0 2px 8px rgba(44,28,16,0.08), 0 1px 2px rgba(44,28,16,0.05), inset 0 1px 0 rgba(255,255,255,0.7) !important;
+  }
+  .card-elevated {
+    box-shadow: 0 6px 20px rgba(44,28,16,0.12), 0 2px 6px rgba(44,28,16,0.07), inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(44,28,16,0.03) !important;
+  }
+  /* Praticienne shadows (fond sombre) */
+  .card-raised-dark {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,245,235,0.06) !important;
+  }
+  .card-elevated-dark {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,245,235,0.08) !important;
+  }
+  .btn-tactile {
+    box-shadow: 0 3px 10px rgba(200,133,108,0.3), 0 1px 3px rgba(200,133,108,0.15), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+    transition: all 0.15s ease !important;
+  }
+  .btn-tactile:hover { box-shadow: 0 5px 16px rgba(200,133,108,0.4), 0 2px 5px rgba(200,133,108,0.2), inset 0 1px 0 rgba(255,255,255,0.3) !important; transform: translateY(-1px) !important; }
+  .btn-tactile:active { box-shadow: inset 0 2px 6px rgba(0,0,0,0.15) !important; transform: translateY(0) !important; }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 16px); }
   /* Scroll */
   ::-webkit-scrollbar { width: 4px; }
@@ -188,8 +207,8 @@ const Btn = ({ onClick, variant = "primary", theme = "p", disabled, children, st
     ...style,
   };
   const variants = {
-    primary: { background: P.pAccent, color: "#1C1410" },
-    sage: { background: P.pGreen, color: "#1C1410" },
+    primary: { background: P.pAccent, color: "#1C1410", boxShadow: "0 3px 10px rgba(200,133,108,0.3), inset 0 1px 0 rgba(255,255,255,0.2)" },
+    sage: { background: P.pGreen, color: "#1C1410", boxShadow: "0 3px 10px rgba(122,158,130,0.3), inset 0 1px 0 rgba(255,255,255,0.2)" },
     ghost: { background: theme === "p" ? P.pSurface : P.cSurface2, color: theme === "p" ? P.pTextMid : P.cTextMid, border: `1px solid ${theme === "p" ? P.pBorder : P.cBorder}` },
     danger: { background: "rgba(181,88,58,0.15)", color: "#B5583A", border: "1px solid rgba(181,88,58,0.2)" },
     cPrimary: { background: P.cGreen, color: "#FFFDFB" },
@@ -810,7 +829,7 @@ function Cliente({ user, onLogout }) {
             if (lm) {
               const isNew = Date.now() - new Date(lm.date).getTime() < 7 * 24 * 60 * 60 * 1000;
               notifs.push(
-                <div key="msg" style={{ background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cGreen}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12 }}>
+                <div key="msg" style={{ background: P.cSurface, border: `0.5px solid rgba(44,28,16,0.08)`, borderLeft: `3px solid ${P.cGreen}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12 }} className="card-raised">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <p style={{ fontSize: 10, color: P.cGreen, textTransform: "uppercase", letterSpacing: "1.5px" }}>💬 Message de Meije</p>
                     {isNew && <span style={{ background: P.cGreen, color: "#fff", fontSize: 9, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Nouveau</span>}
@@ -826,7 +845,7 @@ function Cliente({ user, onLogout }) {
               const last = protocoles[protocoles.length - 1];
               const isNew = Date.now() - new Date(last.date).getTime() < 14 * 24 * 60 * 60 * 1000;
               notifs.push(
-                <button key="proto" onClick={() => setView("protocole")} style={{ width: "100%", background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid ${P.cAccent}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+                <button key="proto" onClick={() => setView("protocole")} style={{ width: "100%", background: P.cSurface, border: `0.5px solid rgba(44,28,16,0.08)`, borderLeft: `3px solid ${P.cAccent}`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textAlign: "left", cursor: "pointer" }} className="card-elevated">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <p style={{ fontSize: 10, color: P.cAccent, textTransform: "uppercase", letterSpacing: "1.5px" }}>🌿 Protocole mis à jour</p>
                     {isNew && <span style={{ background: P.cAccent, color: "#fff", fontSize: 9, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Nouveau</span>}
@@ -1613,7 +1632,7 @@ function Praticienne({ user, onLogout }) {
                 { key: "message", label: "Messages", val: `${messages.length} message${messages.length > 1 ? "s" : ""}`, col: P.pAccent },
                 { key: "documents", label: "Documents", val: `${documents.length} fichier${documents.length > 1 ? "s" : ""}`, col: P.pGreen },
               ].map(({ key, label, val, col }) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ background: P.pSurface, borderRadius: 12, border: `1px solid ${P.pBorder}`, padding: "14px 16px", textAlign: "left", cursor: "pointer" }}>
+                <button key={key} onClick={() => setActiveTab(key)} style={{ background: P.pSurface, borderRadius: 12, border: `0.5px solid ${P.pBorder}`, padding: "14px 16px", textAlign: "left", cursor: "pointer" }} className="card-raised-dark">
                   <p style={{ color: col, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>{label}</p>
                   <p style={{ color: P.pText, fontSize: 14 }}>{val}</p>
                 </button>
@@ -1739,6 +1758,7 @@ function Praticienne({ user, onLogout }) {
           )}
 
           {/* Compléments */}
+          {activeTab === "complements" && (
             <div>
               {clientData?.complements?.length > 0
                 ? clientData.complements.map((c, i) => {
