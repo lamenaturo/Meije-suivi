@@ -54,7 +54,7 @@ const P = {
   pGreenDim: "rgba(122,158,130,0.15)",
 
   // Cliente — fond crème
-  cBg: "#F5EFE6",
+  cBg: "#EDE5D8",
   cSurface: "#FFFDFB",
   cSurface2: "#EDE6DA",
   cBorder: "rgba(44,28,16,0.1)",
@@ -1266,22 +1266,24 @@ function Praticienne({ user, onLogout }) {
     const userRef = doc(db, "users", c.uid);
     onSnapshot(userRef, d => setClientData(d.data()));
     const q1 = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q1, s => setEntries(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    onSnapshot(q1, s => setEntries(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q2 = query(collection(db, "messages"), where("toUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q4 = query(collection(db, "protocoles"), where("toUid", "==", c.uid), orderBy("date", "asc"));
     onSnapshot(q4, s => {
-      const p = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      const p = s.docs.map(d => ({ id: d.id, ...d.data() })) || [];
       setProtocoles(p);
       setNewProtocole(prev => ({ ...prev, titre: getDefaultTitre(c.prenom, p.length) }));
     });
     const q5 = query(collection(db, "documents"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q5, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    // Notes privées
-    const q6 = query(collection(db, "notes_privees"), where("clientUid", "==", c.uid), orderBy("date", "desc"));
-    onSnapshot(q6, s => setNoteHistory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    onSnapshot(q5, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
+    // Notes privées — index requis, gérer l'erreur silencieusement
+    try {
+      const q6 = query(collection(db, "notes_privees"), where("clientUid", "==", c.uid), orderBy("date", "desc"));
+      onSnapshot(q6, s => setNoteHistory(s.docs.map(d => ({ id: d.id, ...d.data() })) || []), err => { console.warn("Index notes_privees en cours de création", err); setNoteHistory([]); });
+    } catch { setNoteHistory([]); }
     setPrivateNotes("");
     setMainView("fiche");
   }, []);
@@ -1744,12 +1746,10 @@ function Praticienne({ user, onLogout }) {
                   const lien = typeof c === "string" ? "" : c.lien;
                   const posologie = typeof c === "string" ? "" : c.posologie;
                   const codePromo = typeof c === "string" ? "" : c.codePromo;
-                  const isEditing = editingComplement === i;
-                  const [editNom, setEditNom] = useState ? null : null; // handled via editingComplement object
+                  const isEditing = typeof editingComplement === "object" && editingComplement?.idx === i;
+                  const edited = isEditing ? editingComplement : null;
 
-                  if (isEditing) {
-                    const edited = typeof editingComplement === "object" && editingComplement?.idx === i
-                      ? editingComplement : { idx: i, nom, lien: lien||"", posologie: posologie||"", codePromo: codePromo||"" };
+                  if (isEditing && edited) {
                     return (
                       <div key={i} style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
