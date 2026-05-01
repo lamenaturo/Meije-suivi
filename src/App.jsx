@@ -53,21 +53,21 @@ const P = {
   pGreen: "#7A9E82",       // sauge
   pGreenDim: "rgba(122,158,130,0.15)",
 
-  // Cliente — fond crème
-  cBg: "#EDE5D8",
-  cSurface: "#FFFDFB",
-  cSurface2: "#EDE6DA",
-  cBorder: "rgba(44,28,16,0.1)",
-  cBorder2: "rgba(44,28,16,0.2)",
-  cText: "#2C1C10",
-  cTextMid: "rgba(44,28,16,0.55)",
-  cTextDim: "rgba(44,28,16,0.28)",
-  cAccent: "#8B6A4A",      // bark chaud
-  cGreen: "#5A8A68",       // sauge foncé
-  cGreenDim: "rgba(90,138,104,0.12)",
-  cGreenBorder: "rgba(90,138,104,0.25)",
-  cTerra: "#B5583A",       // terracotta cliente
-  cTerraDim: "rgba(181,88,58,0.1)",
+  // Cliente — Écorce claire (palette D)
+  cBg: "#C9B8A0",
+  cSurface: "#DDD0BA",
+  cSurface2: "#BFAB90",
+  cBorder: "rgba(28,16,8,0.12)",
+  cBorder2: "rgba(28,16,8,0.22)",
+  cText: "#1C1008",
+  cTextMid: "rgba(28,16,8,0.55)",
+  cTextDim: "rgba(28,16,8,0.38)",
+  cAccent: "#8A5A2A",      // bark chaud
+  cGreen: "#5A8A6A",       // sauge
+  cGreenDim: "rgba(90,138,106,0.15)",
+  cGreenBorder: "rgba(90,138,106,0.3)",
+  cTerra: "#B5583A",
+  cTerraDim: "rgba(181,88,58,0.12)",
 
   // Partagé
   serif: "'Cormorant Garamond', Georgia, serif",
@@ -1042,7 +1042,7 @@ function Cliente({ user, onLogout }) {
       {view === "evolution" && (
         <div style={inner} className="fade-in">
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 4 }}>Mon évolution</p>
-          <p style={{ color: P.cTextDim, fontSize: 12, marginBottom: 20 }}>Tes scores semaine par semaine, en lien avec ton cycle</p>
+          <p style={{ color: P.cTextDim, fontSize: 12, marginBottom: 20 }}>Tous tes paramètres de santé, semaine après semaine</p>
 
           {entries.length < 2
             ? <EmptyState message="Remplis au moins 2 semaines de suivi pour voir ton évolution." theme="c" />
@@ -1511,12 +1511,21 @@ function Praticienne({ user, onLogout }) {
     const uploaded = [];
     for (const file of files) {
       const fd = new FormData();
-      fd.append("file", file); fd.append("upload_preset", UPLOAD_PRESET); fd.append("folder", "meije-naturo/anamneses");
+      fd.append("file", file);
+      fd.append("upload_preset", UPLOAD_PRESET);
+      fd.append("folder", "meije-naturo/anamneses");
       try {
         const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+        if (!res.ok) throw new Error("Erreur serveur " + res.status);
         const data = await res.json();
-        if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
-      } catch {}
+        if (data.secure_url) {
+          uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
+        } else {
+          showToast("Erreur upload : " + (data.error?.message || "inconnu"));
+        }
+      } catch (e) {
+        showToast("Erreur upload : " + e.message);
+      }
     }
     setUploadedAnamnese(prev => [...prev, ...uploaded]);
     setUploadingAnamnese(false);
@@ -1862,7 +1871,7 @@ function Praticienne({ user, onLogout }) {
           {activeTab === "evolution" && (
             <div>
               <p style={{ color: P.pTextDim, fontSize: 12, marginBottom: 16 }}>
-                Évolution de {selected.prenom} — scores en lien avec son cycle
+                Évolution de {selected.prenom} — tous les paramètres de santé en lien avec son cycle
               </p>
               {entries.length < 2
                 ? <EmptyState message={`${selected.prenom} n'a pas encore assez de suivis pour afficher le graphique.`} theme="p" />
