@@ -347,11 +347,9 @@ function LandingPage({ onEnter }) {
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 
 function Auth({ onLogin, onBack }) {
-  const [mode, setMode] = useState("login");
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [prénom, setPrénom] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -365,21 +363,6 @@ function Auth({ onLogin, onBack }) {
       const d = await getDoc(doc(db, "users", c.user.uid));
       onLogin({ uid: c.user.uid, email, prénom: d.data()?.prénom || "", role: email === PRATICIENNE_EMAIL ? "praticienne" : "cliente" });
     } catch { setError("Email ou mot de passe incorrect."); }
-    setLoading(false);
-  };
-
-  const register = async () => {
-    setError(""); setLoading(true);
-    if (!email || !password || !prénom) { setError("Remplis tous les champs."); setLoading(false); return; }
-    try {
-      const c = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", c.user.uid), { prénom, email, role: "cliente", createdAt: new Date().toISOString(), complements: [] });
-      onLogin({ uid: c.user.uid, email, prénom, role: "cliente" });
-    } catch (e) {
-      if (e.code === "auth/email-already-in-use") setError("Compte déjà existant.");
-      else if (e.code === "auth/weak-password") setError("Mot de passe trop court (6 min).");
-      else setError("Erreur lors de la création du compte.");
-    }
     setLoading(false);
   };
 
@@ -399,10 +382,9 @@ function Auth({ onLogin, onBack }) {
       background: P.pBg,
       backgroundImage: "radial-gradient(ellipse at 30% 20%, rgba(200,133,108,0.12) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(122,158,130,0.08) 0%, transparent 50%)",
     }}>
-      {/* Retour landing + Logo */}
       <div style={{ textAlign: "center", marginBottom: 40, animation: "fadeIn 0.5s ease" }}>
         {onBack && (
-          <button onClick={onBack} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer", marginBottom: 20, display: "block", margin: "0 auto 20px" }}>
+          <button onClick={onBack} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer", display: "block", margin: "0 auto 20px" }}>
             ← Retour à l'accueil
           </button>
         )}
@@ -412,63 +394,39 @@ function Auth({ onLogin, onBack }) {
         <p style={{ color: P.pTextDim, fontSize: 12, letterSpacing: "2px", textTransform: "uppercase" }}>Espace de suivi personnalisé</p>
       </div>
 
-      {/* Card */}
-      <div style={{
-        width: "100%", maxWidth: 400,
-        background: P.pSurface,
-        borderRadius: 20, border: `1px solid ${P.pBorder}`,
-        padding: "28px 24px",
-        animation: "slideUp 0.4s ease",
-      }}>
-        {/* Tabs login/register */}
-        <div style={{ display: "flex", background: "rgba(255,245,235,0.04)", borderRadius: 30, padding: 3, marginBottom: 24 }}>
-          {[["login", "Se connecter"], ["register", "Créer un compte"]].map(([m, l]) => (
-            <button key={m} onClick={() => { setMode(m); setError(""); setResetSent(false); }} style={{
-              flex: 1, padding: "9px 0", borderRadius: 28, border: "none",
-              fontFamily: P.sans, fontSize: 13, fontWeight: 500, transition: "all 0.2s",
-              background: mode === m ? P.pAccent : "transparent",
-              color: mode === m ? "#1C1410" : P.pTextDim,
-            }}>{l}</button>
-          ))}
-        </div>
-
+      <div style={{ width: "100%", maxWidth: 380, background: P.pSurface, borderRadius: 20, border: `1px solid ${P.pBorder}`, padding: "28px 24px", animation: "slideUp 0.4s ease" }}>
+        <p style={{ color: P.pTextDim, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 20, textAlign: "center" }}>Connexion</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {mode === "register" && (
-            <div>
-              <label style={{ color: P.pTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: 6 }}>Prénom</label>
-              <input value={prénom} onChange={e => setPrénom(e.target.value)} placeholder="Ton prénom" style={iP("p")} />
-            </div>
-          )}
           <div>
             <label style={{ color: P.pTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: 6 }}>Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.fr" type="email" style={iP("p")} onKeyDown={e => e.key === "Enter" && (mode === "login" ? login() : register())} />
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.fr" type="email" style={iP("p")} onKeyDown={e => e.key === "Enter" && login()} />
           </div>
           <div>
             <label style={{ color: P.pTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", display: "block", marginBottom: 6 }}>Mot de passe</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password" style={iP("p")} onKeyDown={e => e.key === "Enter" && (mode === "login" ? login() : register())} />
+            <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password" style={iP("p")} onKeyDown={e => e.key === "Enter" && login()} />
           </div>
-
           {error && <div style={{ color: "#C4614A", fontSize: 13, background: "rgba(196,97,74,0.1)", borderRadius: 10, padding: "10px 14px", border: "1px solid rgba(196,97,74,0.2)" }}>{error}</div>}
           {resetSent && <div style={{ color: P.pGreen, fontSize: 13, background: P.pGreenDim, borderRadius: 10, padding: "10px 14px" }}>Email envoyé ! Vérifie ta boîte mail.</div>}
-
-          <Btn onClick={mode === "login" ? login : register} disabled={loading} style={{ marginTop: 4, width: "100%" }}>
-            {loading ? "..." : mode === "login" ? "Se connecter" : "Créer mon compte"}
+          <Btn onClick={login} disabled={loading} style={{ marginTop: 4, width: "100%" }}>
+            {loading ? "…" : "Se connecter"}
           </Btn>
-
-          {mode === "login" && (
-            <button onClick={reset} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, cursor: "pointer", fontFamily: P.sans, textAlign: "center", textDecoration: "underline", padding: "4px 0" }}>
-              Mot de passe oublié ?
-            </button>
-          )}
+          <button onClick={reset} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, cursor: "pointer", fontFamily: P.sans, textAlign: "center", textDecoration: "underline", padding: "4px 0" }}>
+            Mot de passe oublié ?
+          </button>
         </div>
       </div>
 
-      <p style={{ color: P.pTextDim, fontSize: 11, textAlign: "center", marginTop: 20 }}>
-        Suivi confidentiel ·{" "}
-        <button onClick={() => setShowPrivacy(true)} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 11, cursor: "pointer", fontFamily: P.sans, textDecoration: "underline" }}>
-          Politique de confidentialité
-        </button>
-      </p>
+      <div style={{ marginTop: 20, textAlign: "center" }}>
+        <p style={{ color: P.pTextDim, fontSize: 12, lineHeight: 1.6 }}>
+          Ton espace est créé par Meije après ta consultation.
+        </p>
+        <p style={{ color: P.pTextDim, fontSize: 11, marginTop: 12 }}>
+          Suivi confidentiel ·{" "}
+          <button onClick={() => setShowPrivacy(true)} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 11, cursor: "pointer", fontFamily: P.sans, textDecoration: "underline" }}>
+            Politique de confidentialité
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
