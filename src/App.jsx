@@ -612,11 +612,22 @@ function Praticienne({ user, onLogout }) {
     if (!newClientForm.prenom || !newClientForm.email || !newClientForm.password) return;
     setCreatingClient(true);
     try {
-      const c = await createUserWithEmailAndPassword(auth, newClientForm.email, newClientForm.password);
-      await setDoc(doc(db, "users", c.uid), {
+      // Utilise une app Firebase secondaire pour ne pas déconnecter la praticienne
+      const { initializeApp, getApp } = await import("firebase/app");
+      const { getAuth, createUserWithEmailAndPassword: createUser } = await import("firebase/auth");
+      let secondaryApp;
+      try { secondaryApp = getApp("secondary"); }
+      catch { 
+        const { firebaseConfig } = await import("./firebase");
+        secondaryApp = initializeApp(firebaseConfig, "secondary");
+      }
+      const secondaryAuth = getAuth(secondaryApp);
+      const c = await createUser(secondaryAuth, newClientForm.email, newClientForm.password);
+      await setDoc(doc(db, "users", c.user.uid), {
         prenom: newClientForm.prenom, email: newClientForm.email,
         role: "cliente", createdAt: new Date().toISOString(), complements: [], rappelsActifs: true
       });
+      await secondaryAuth.signOut();
       // Email de bienvenue
       await sendEmail(EMAILJS_TEMPLATE_BIENVENUE, {
         prenom: newClientForm.prenom, email: newClientForm.email, to_email: newClientForm.email
@@ -625,7 +636,8 @@ function Praticienne({ user, onLogout }) {
       setShowNewClient(false);
       showToast("Espace créé pour " + newClientForm.prenom);
     } catch (e) {
-      // Client created, need to re-auth praticienne
+      console.error(e);
+      alert("Erreur : " + e.message);
     }
     setCreatingClient(false);
   };
