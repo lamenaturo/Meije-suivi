@@ -357,11 +357,14 @@ function LandingPage({ onEnter }) {
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "32px 20px 0" }}>
         <div style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 16, padding: "20px 24px", textAlign: "center" }}>
           <p style={{ color: P.pAccent, fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Tu n'as pas encore de compte ?</p>
-          <p style={{ color: P.pTextDim, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
-            L'accès à cet espace est créé par Meije après ta prise de rendez-vous. Si tu souhaites démarrer un accompagnement, rends-toi sur son site.
+          <p style={{ color: P.pTextDim, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+            L'accès à cet espace est créé par Meije après confirmation de ton RDV et règlement. Si tu souhaites démarrer un accompagnement, rends-toi sur son site.
           </p>
-          <a href="https://meijenaturo.carrd.co" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
-            Prendre rendez-vous → meijenaturo.carrd.co
+          <p style={{ color: P.pTextDim, fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>
+            Règlement par virement ou PayPal · Paiement en 2 fois disponible pour le Pack 3 mois
+          </p>
+          <a href="https://meije-naturo.fr" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
+            Prendre rendez-vous → meije-naturo.fr
           </a>
         </div>
       </div>
