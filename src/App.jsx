@@ -806,6 +806,8 @@ function Cliente({ user, onLogout }) {
       scores, notes, cyclePhase, cycleNote,
       complementsPris, humeur_libre: humeur, confidences, documents: uploadDocs,
     });
+    // Notifier Meije
+    try { await sendEmail(EMAILJS_TEMPLATE_BIENVENUE, { prenom: user.prénom, action: "a rempli son suivi de la semaine", to_email: PRATICIENNE_EMAIL }); } catch {}
     setScores({}); setNotes({}); setCyclePhase(""); setCycleNote("");
     setComplementsPris({}); setHumeur(""); setConfidences(""); setUploadDocs([]);
     setSaved(true);
@@ -1210,6 +1212,7 @@ function Cliente({ user, onLogout }) {
                 {uploadDocs.map((d, i) => <FileTag key={i} name={d.name} url={d.url} theme="c" />)}
                 <Btn variant="cPrimary" onClick={async () => {
                   await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, date: new Date().toISOString(), files: uploadDocs });
+                  try { await sendEmail(EMAILJS_TEMPLATE_BIENVENUE, { prenom: user.prénom, action: "a partagé des documents", to_email: PRATICIENNE_EMAIL }); } catch {}
                   setUploadDocs([]);
                   showToast("Documents envoyés à Meije ✓");
                 }} style={{ marginTop: 12, width: "100%" }}>Envoyer à Meije</Btn>
@@ -1629,6 +1632,8 @@ function Praticienne({ user, onLogout }) {
       toUid: selected.uid, toEmail: selected.email, toPrenom: selected.prenom,
       text: newMsg.trim(), date: new Date().toISOString(),
     });
+    // Notifier la cliente par email
+    try { await sendEmail(EMAILJS_TEMPLATE, { prenom: selected.prenom, to_email: selected.email }); } catch {}
     setNewMsg(""); setSending(false);
     showToast("Message envoyé à " + selected.prenom + " ✓");
   };
