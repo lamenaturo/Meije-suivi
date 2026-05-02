@@ -759,7 +759,7 @@ function Cliente({ user, onLogout }) {
     const u4 = onSnapshot(userRef, d => {
       const data = d.data();
       if (data?.complements) setComplements(data.complements);
-      setUserProfil({ profils: data?.profils || [] });
+      setUserProfil({ profils: data?.profils || [], axesManuel: data?.axesManuel || [], axesExclus: data?.axesExclus || [] });
     });
     return () => { u(); u2(); u3(); u4(); u5(); u6(); };
   }, [user.uid]);
@@ -1017,12 +1017,14 @@ function Cliente({ user, onLogout }) {
           {(() => {
             // Récupérer les priorités du profil depuis userData (stocké dans complements user doc)
             // On les lit depuis clientData si dispo, sinon ordre par défaut
-            const toutesLesPriorites = [...new Set(
-              (userProfil.profils || []).flatMap(key => {
+            const axesExclus = userProfil.axesExclus || [];
+            const toutesLesPriorites = [...new Set([
+              ...(userProfil.profils || []).flatMap(key => {
                 const sous = PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === key);
                 return sous?.priorites || [];
-              })
-            )];
+              }),
+              ...(userProfil.axesManuel || []),
+            ])].filter(k => !axesExclus.includes(k));
 
             const prioritaires = toutesLesPriorites.length > 0
               ? TI.filter(t => toutesLesPriorites.includes(t.key))
@@ -1939,15 +1941,51 @@ function Praticienne({ user, onLogout }) {
                       return sous?.priorites || [];
                     })
                   )];
+                  // Axes manuellement ajoutés (en plus des profils)
+                  const axesManuel = clientData?.axesManuel || [];
+                  const tousLesAxes = [...new Set([...toutesLesPriorites, ...axesManuel])];
+
                   return (
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${P.pBorder}` }}>
-                      <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 8 }}>Axes prioritaires dans son suivi</p>
+                      <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 8 }}>Axes prioritaires dans son suivi — clique pour ajouter ou retirer</p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {toutesLesPriorites.map(k => {
-                          const t = TI.find(i => i.key === k);
-                          return t ? <span key={k} style={{ background: P.pAccentDim, border: `0.5px solid ${P.pAccentBorder}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: P.pAccent }}>{t.icon} {t.label}</span> : null;
+                        {TI.map(t => {
+                          const isAuto = toutesLesPriorites.includes(t.key);
+                          const isManuel = axesManuel.includes(t.key);
+                          const active = isAuto || isManuel;
+                          return (
+                            <button key={t.key} onClick={async () => {
+                              const currentManuel = clientData?.axesManuel || [];
+                              const currentExclus = clientData?.axesExclus || [];
+                              if (isAuto && !currentExclus.includes(t.key)) {
+                                // Exclure un axe auto
+                                await updateDoc(doc(db, "users", selected.uid), { axesExclus: [...currentExclus, t.key] });
+                              } else if (isAuto && currentExclus.includes(t.key)) {
+                                // Réactiver un axe auto exclu
+                                await updateDoc(doc(db, "users", selected.uid), { axesExclus: currentExclus.filter(k => k !== t.key) });
+                              } else if (isManuel) {
+                                // Retirer un axe manuel
+                                await updateDoc(doc(db, "users", selected.uid), { axesManuel: currentManuel.filter(k => k !== t.key) });
+                              } else {
+                                // Ajouter un axe manuel
+                                await updateDoc(doc(db, "users", selected.uid), { axesManuel: [...currentManuel, t.key] });
+                              }
+                            }} style={{
+                              padding: "6px 12px", borderRadius: 20, cursor: "pointer",
+                              border: `1.5px solid ${active ? (isManuel ? P.pGreen + "88" : P.pAccentBorder) : P.pBorder}`,
+                              background: active ? (isManuel ? P.pGreenDim : P.pAccentDim) : "transparent",
+                              color: active ? (isManuel ? P.pGreen : P.pAccent) : P.pTextDim,
+                              fontFamily: P.sans, fontSize: 12, fontWeight: active ? 500 : 400,
+                              opacity: (clientData?.axesExclus || []).includes(t.key) ? 0.3 : 1,
+                            }}>
+                              {t.icon} {t.label}
+                            </button>
+                          );
                         })}
                       </div>
+                      <p style={{ color: P.pTextDim, fontSize: 10, marginTop: 8 }}>
+                        Terracotta = profil · Vert = ajouté manuellement · Grisé = désactivé
+                      </p>
                     </div>
                   );
                 })()}
