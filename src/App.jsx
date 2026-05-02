@@ -134,12 +134,24 @@ const P = {
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { background: ${P.pBg}; -webkit-font-smoothing: antialiased; }
   input, textarea, button, select { font-family: ${P.sans}; }
   input:focus, textarea:focus { outline: none; }
   button { cursor: pointer; }
+
+  /* ── RESPONSIVE ── */
+  /* Tablette : max 768px — layout adapté */
+  @media (max-width: 768px) {
+    .prat-grid { grid-template-columns: 1fr !important; }
+    .tabs-scroll { -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+  }
+  /* Desktop large : centrage et max-width confortables */
+  @media (min-width: 1024px) {
+    .page-inner { max-width: 720px !important; }
+    .prat-inner { max-width: 900px !important; }
+  }
+
   /* Neo-Tactile shadows */
   .card-raised {
     box-shadow: 0 2px 8px rgba(44,28,16,0.08), 0 1px 2px rgba(44,28,16,0.05), inset 0 1px 0 rgba(255,255,255,0.7) !important;
@@ -147,25 +159,16 @@ const GLOBAL_CSS = `
   .card-elevated {
     box-shadow: 0 6px 20px rgba(44,28,16,0.12), 0 2px 6px rgba(44,28,16,0.07), inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(44,28,16,0.03) !important;
   }
-  /* Praticienne shadows (fond sombre) */
   .card-raised-dark {
     box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,245,235,0.06) !important;
   }
   .card-elevated-dark {
     box-shadow: 0 6px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,245,235,0.08) !important;
   }
-  .btn-tactile {
-    box-shadow: 0 3px 10px rgba(200,133,108,0.3), 0 1px 3px rgba(200,133,108,0.15), inset 0 1px 0 rgba(255,255,255,0.25) !important;
-    transition: all 0.15s ease !important;
-  }
-  .btn-tactile:hover { box-shadow: 0 5px 16px rgba(200,133,108,0.4), 0 2px 5px rgba(200,133,108,0.2), inset 0 1px 0 rgba(255,255,255,0.3) !important; transform: translateY(-1px) !important; }
-  .btn-tactile:active { box-shadow: inset 0 2px 6px rgba(0,0,0,0.15) !important; transform: translateY(0) !important; }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 16px); }
-  /* Scroll */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
-  /* Animations */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
@@ -1461,29 +1464,34 @@ function Praticienne({ user, onLogout }) {
   );
 
   const select = useCallback(c => {
+    // Nettoyer les anciens listeners avant d'en créer de nouveaux
+    if (window._clientUnsubs) window._clientUnsubs.forEach(fn => fn());
     setSelected(c); setNewMsg(""); setActiveTab("suivi"); setAnamneseMode("view");
+    setClientData(null); setEntries([]); setMessages([]); setAnamneses([]);
+    setProtocoles([]); setDocuments([]); setNoteHistory([]);
     setNewProtocole({ titre: getDefaultTitre(c.prenom, 0), contenu: getDefaultMessage(c.prenom) });
     const userRef = doc(db, "users", c.uid);
-    onSnapshot(userRef, d => setClientData(d.data()));
+    const u0 = onSnapshot(userRef, d => setClientData(d.data()));
     const q1 = query(collection(db, "entries"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q1, s => setEntries(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
+    const u1 = onSnapshot(q1, s => setEntries(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q2 = query(collection(db, "messages"), where("toUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
+    const u2 = onSnapshot(q2, s => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q3 = query(collection(db, "anamneses"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
+    const u3 = onSnapshot(q3, s => setAnamneses(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
     const q4 = query(collection(db, "protocoles"), where("toUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q4, s => {
+    const u4 = onSnapshot(q4, s => {
       const p = s.docs.map(d => ({ id: d.id, ...d.data() })) || [];
       setProtocoles(p);
       setNewProtocole(prev => ({ ...prev, titre: getDefaultTitre(c.prenom, p.length) }));
     });
     const q5 = query(collection(db, "documents"), where("userUid", "==", c.uid), orderBy("date", "asc"));
-    onSnapshot(q5, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
-    // Notes privées — index requis, gérer l'erreur silencieusement
+    const u5 = onSnapshot(q5, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() })) || []));
+    let u6 = () => {};
     try {
       const q6 = query(collection(db, "notes_privees"), where("clientUid", "==", c.uid), orderBy("date", "desc"));
-      onSnapshot(q6, s => setNoteHistory(s.docs.map(d => ({ id: d.id, ...d.data() })) || []), err => { console.warn("Index notes_privees en cours de création", err); setNoteHistory([]); });
+      u6 = onSnapshot(q6, s => setNoteHistory(s.docs.map(d => ({ id: d.id, ...d.data() })) || []), () => setNoteHistory([]));
     } catch { setNoteHistory([]); }
+    window._clientUnsubs = [u0, u1, u2, u3, u4, u5, u6];
     setPrivateNotes("");
     setMainView("fiche");
   }, []);
@@ -2422,7 +2430,6 @@ export default function App() {
   return (
     <>
       <style>{GLOBAL_CSS}</style>
-      <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" />
       {!user
         ? (showLanding
           ? <LandingPage onEnter={() => setShowLanding(false)} />
