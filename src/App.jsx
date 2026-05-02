@@ -957,6 +957,7 @@ function Cliente({ user, onLogout }) {
       {/* ── SUIVI DE LA SEMAINE ── */}
       {view === "suivi" && (
         <div style={inner} className="fade-in">
+          <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 4 }}>Suivi de la semaine</p>
           <p style={{ color: P.cTextDim, fontSize: 12, letterSpacing: "0.5px", marginBottom: 24 }}>{wk()}</p>
 
@@ -1087,6 +1088,7 @@ function Cliente({ user, onLogout }) {
       {/* ── PROTOCOLE ── */}
       {view === "protocole" && (
         <div style={inner} className="fade-in">
+          <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 20 }}>Mon protocole</p>
           {protocoles.length === 0
             ? <EmptyState message="Ton protocole personnalisé apparaîtra ici après votre première consultation." theme="c" />
@@ -1121,6 +1123,7 @@ function Cliente({ user, onLogout }) {
       {/* ── ÉVOLUTION ── */}
       {view === "evolution" && (
         <div style={inner} className="fade-in">
+          <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 4 }}>Mon évolution</p>
           <p style={{ color: P.cTextDim, fontSize: 12, marginBottom: 20 }}>Tous tes paramètres de santé, semaine après semaine</p>
 
@@ -1185,6 +1188,7 @@ function Cliente({ user, onLogout }) {
       {/* ── DOCUMENTS ── */}
       {view === "docs" && (
         <div style={inner} className="fade-in">
+          <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 6 }}>Mes documents</p>
           <p style={{ color: P.cTextMid, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Envoie tes bilans, ordonnances, photos… Meije les recevra directement.</p>
           <div style={{ background: P.cSurface, borderRadius: 14, border: `1px solid ${P.cBorder}`, padding: "18px 20px", marginBottom: 20 }}>
@@ -1215,6 +1219,7 @@ function Cliente({ user, onLogout }) {
       {/* ── MON DOSSIER ── */}
       {view === "moi" && (
         <div style={inner} className="fade-in">
+          <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 20 }}>Mon dossier</p>
 
           {/* Résumé parcours */}
@@ -1360,7 +1365,6 @@ const PRAT_NAV = [
 ];
 
 const TABS_CLIENT = [
-  { key: "dossier", label: "Dossier" },
   { key: "suivi", label: "Suivis" },
   { key: "evolution", label: "Évolution" },
   { key: "complements", label: "Compléments" },
@@ -1457,7 +1461,7 @@ function Praticienne({ user, onLogout }) {
   );
 
   const select = useCallback(c => {
-    setSelected(c); setNewMsg(""); setActiveTab("dossier"); setAnamneseMode("view");
+    setSelected(c); setNewMsg(""); setActiveTab("suivi"); setAnamneseMode("view");
     setNewProtocole({ titre: getDefaultTitre(c.prenom, 0), contenu: getDefaultMessage(c.prenom) });
     const userRef = doc(db, "users", c.uid);
     onSnapshot(userRef, d => setClientData(d.data()));
@@ -1895,120 +1899,77 @@ function Praticienne({ user, onLogout }) {
             ))}
           </div>
 
-          {/* Dossier */}
-          {activeTab === "dossier" && (
-            <div>
-              {/* Sélecteur de profil — multi-sélection */}
-              <div style={{ background: P.pSurface, borderRadius: 14, border: `0.5px solid ${P.pBorder}`, padding: "16px 18px", marginBottom: 16 }} className="card-raised-dark">
-                <p style={{ color: P.pAccent, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 4 }}>Profils de suivi</p>
-                <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 14 }}>Tu peux sélectionner plusieurs profils si elle consulte pour plusieurs problématiques.</p>
-
-                {PROFILS.map(g => (
-                  <div key={g.groupe} style={{ marginBottom: 14 }}>
-                    <p style={{ color: P.pTextMid, fontSize: 11, fontWeight: 500, marginBottom: 8, letterSpacing: "0.3px" }}>{g.groupe}</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {g.sousProfiles.map(s => {
-                        const selected_profils = clientData?.profils || [];
-                        const active = selected_profils.includes(s.key);
+          {/* Profil de suivi — toujours visible sous les tabs */}
+          <details style={{ marginBottom: 16 }}>
+            <summary style={{ color: P.pTextDim, fontSize: 11, cursor: "pointer", padding: "8px 0", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: P.pAccent }}>⚙️</span>
+              <span>Profils de suivi · {(clientData?.profils || []).length === 0 ? "Non défini" : (clientData.profils || []).map(k => PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === k)?.label).filter(Boolean).join(", ")}</span>
+            </summary>
+            <div style={{ background: P.pSurface, borderRadius: 12, border: `0.5px solid ${P.pBorder}`, padding: "14px 16px", marginTop: 8 }}>
+              {PROFILS.map(g => (
+                <div key={g.groupe} style={{ marginBottom: 12 }}>
+                  <p style={{ color: P.pTextMid, fontSize: 11, fontWeight: 500, marginBottom: 6 }}>{g.groupe}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {g.sousProfiles.map(s => {
+                      const sel_profils = clientData?.profils || [];
+                      const active = sel_profils.includes(s.key);
+                      return (
+                        <button key={s.key} onClick={async () => {
+                          const current = clientData?.profils || [];
+                          const updated = active ? current.filter(k => k !== s.key) : [...current, s.key];
+                          await updateDoc(doc(db, "users", selected.uid), { profils: updated });
+                        }} style={{
+                          padding: "5px 11px", borderRadius: 20, cursor: "pointer",
+                          border: `1.5px solid ${active ? P.pGreen : P.pBorder}`,
+                          background: active ? P.pGreenDim : "transparent",
+                          color: active ? P.pGreen : P.pTextMid,
+                          fontFamily: P.sans, fontSize: 11, fontWeight: active ? 500 : 400,
+                        }}>{active ? "✓ " : ""}{s.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {/* Axes */}
+              {(clientData?.profils?.length > 0) && (() => {
+                const toutesLesPriorites = [...new Set((clientData.profils || []).flatMap(key => {
+                  const sous = PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === key);
+                  return sous?.priorites || [];
+                }))];
+                const axesManuel = clientData?.axesManuel || [];
+                return (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${P.pBorder}` }}>
+                    <p style={{ color: P.pTextDim, fontSize: 10, marginBottom: 8 }}>Axes prioritaires — clique pour ajuster</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {TI.map(t => {
+                        const isAuto = toutesLesPriorites.includes(t.key);
+                        const isManuel = axesManuel.includes(t.key);
+                        const isExclu = (clientData?.axesExclus || []).includes(t.key);
+                        const active = (isAuto || isManuel) && !isExclu;
                         return (
-                          <button key={s.key} onClick={async () => {
-                            const current = clientData?.profils || [];
-                            const updated = active
-                              ? current.filter(k => k !== s.key)
-                              : [...current, s.key];
-                            await updateDoc(doc(db, "users", selected.uid), { profils: updated });
-                            showToast(active ? `${s.label} retiré` : `${s.label} ajouté ✓`);
+                          <button key={t.key} onClick={async () => {
+                            const currentManuel = clientData?.axesManuel || [];
+                            const currentExclus = clientData?.axesExclus || [];
+                            if (isAuto) {
+                              await updateDoc(doc(db, "users", selected.uid), { axesExclus: isExclu ? currentExclus.filter(k => k !== t.key) : [...currentExclus, t.key] });
+                            } else {
+                              await updateDoc(doc(db, "users", selected.uid), { axesManuel: isManuel ? currentManuel.filter(k => k !== t.key) : [...currentManuel, t.key] });
+                            }
                           }} style={{
-                            padding: "7px 13px", borderRadius: 20,
-                            border: `1.5px solid ${active ? P.pGreen : P.pBorder}`,
-                            background: active ? P.pGreenDim : "transparent",
-                            color: active ? P.pGreen : P.pTextMid,
-                            fontFamily: P.sans, fontSize: 12, fontWeight: active ? 500 : 400, cursor: "pointer",
-                          }}>
-                            {active ? "✓ " : ""}{s.label}
-                          </button>
+                            padding: "4px 10px", borderRadius: 20, cursor: "pointer",
+                            border: `1.5px solid ${active ? (isManuel ? P.pGreen + "88" : P.pAccentBorder) : P.pBorder}`,
+                            background: active ? (isManuel ? P.pGreenDim : P.pAccentDim) : "transparent",
+                            color: active ? (isManuel ? P.pGreen : P.pAccent) : P.pTextDim,
+                            fontFamily: P.sans, fontSize: 11, opacity: isExclu ? 0.3 : 1,
+                          }}>{t.icon} {t.label}</button>
                         );
                       })}
                     </div>
                   </div>
-                ))}
-
-                {/* Axes prioritaires combinés */}
-                {(clientData?.profils?.length > 0) && (() => {
-                  const toutesLesPriorites = [...new Set(
-                    (clientData.profils || []).flatMap(key => {
-                      const sous = PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === key);
-                      return sous?.priorites || [];
-                    })
-                  )];
-                  // Axes manuellement ajoutés (en plus des profils)
-                  const axesManuel = clientData?.axesManuel || [];
-                  const tousLesAxes = [...new Set([...toutesLesPriorites, ...axesManuel])];
-
-                  return (
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${P.pBorder}` }}>
-                      <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 8 }}>Axes prioritaires dans son suivi — clique pour ajouter ou retirer</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {TI.map(t => {
-                          const isAuto = toutesLesPriorites.includes(t.key);
-                          const isManuel = axesManuel.includes(t.key);
-                          const active = isAuto || isManuel;
-                          return (
-                            <button key={t.key} onClick={async () => {
-                              const currentManuel = clientData?.axesManuel || [];
-                              const currentExclus = clientData?.axesExclus || [];
-                              if (isAuto && !currentExclus.includes(t.key)) {
-                                // Exclure un axe auto
-                                await updateDoc(doc(db, "users", selected.uid), { axesExclus: [...currentExclus, t.key] });
-                              } else if (isAuto && currentExclus.includes(t.key)) {
-                                // Réactiver un axe auto exclu
-                                await updateDoc(doc(db, "users", selected.uid), { axesExclus: currentExclus.filter(k => k !== t.key) });
-                              } else if (isManuel) {
-                                // Retirer un axe manuel
-                                await updateDoc(doc(db, "users", selected.uid), { axesManuel: currentManuel.filter(k => k !== t.key) });
-                              } else {
-                                // Ajouter un axe manuel
-                                await updateDoc(doc(db, "users", selected.uid), { axesManuel: [...currentManuel, t.key] });
-                              }
-                            }} style={{
-                              padding: "6px 12px", borderRadius: 20, cursor: "pointer",
-                              border: `1.5px solid ${active ? (isManuel ? P.pGreen + "88" : P.pAccentBorder) : P.pBorder}`,
-                              background: active ? (isManuel ? P.pGreenDim : P.pAccentDim) : "transparent",
-                              color: active ? (isManuel ? P.pGreen : P.pAccent) : P.pTextDim,
-                              fontFamily: P.sans, fontSize: 12, fontWeight: active ? 500 : 400,
-                              opacity: (clientData?.axesExclus || []).includes(t.key) ? 0.3 : 1,
-                            }}>
-                              {t.icon} {t.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p style={{ color: P.pTextDim, fontSize: 10, marginTop: 8 }}>
-                        Terracotta = profil · Vert = ajouté manuellement · Grisé = désactivé
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Cards résumé */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-              {[
-                { key: "anamnese", label: "Questionnaire", val: anamneses.length > 0 ? `Rempli le ${new Date(anamneses[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : "Non rempli", col: P.pGreen },
-                { key: "suivi", label: "Derniers suivis", val: `${entries.length} semaine${entries.length > 1 ? "s" : ""}`, col: P.pGreen },
-                { key: "complements", label: "Compléments", val: `${clientData?.complements?.length || 0} prescrit${(clientData?.complements?.length || 0) > 1 ? "s" : ""}`, col: P.pGreen },
-                { key: "protocole", label: "Protocole", val: `${protocoles.length} envoyé${protocoles.length > 1 ? "s" : ""}`, col: P.pAccent },
-                { key: "message", label: "Messages", val: `${messages.length} message${messages.length > 1 ? "s" : ""}`, col: P.pAccent },
-                { key: "documents", label: "Documents", val: `${documents.length} fichier${documents.length > 1 ? "s" : ""}`, col: P.pGreen },
-              ].map(({ key, label, val, col }) => (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ background: P.pSurface, borderRadius: 12, border: `0.5px solid ${P.pBorder}`, padding: "14px 16px", textAlign: "left", cursor: "pointer" }} className="card-raised-dark">
-                  <p style={{ color: col, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>{label}</p>
-                  <p style={{ color: P.pText, fontSize: 14 }}>{val}</p>
-                </button>
-              ))}
-              </div>
+                );
+              })()}
             </div>
-          )}
+          </details>
 
           {/* Suivis */}
           {activeTab === "suivi" && (
