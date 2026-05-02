@@ -363,8 +363,8 @@ function LandingPage({ onEnter }) {
           <p style={{ color: P.pTextDim, fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>
             Règlement par virement ou PayPal · Paiement en 2 fois disponible pour le Pack 3 mois
           </p>
-          <a href="https://meije-naturo.fr" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
-            Prendre rendez-vous → meije-naturo.fr
+          <a href="https://meijenaturo.fr" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
+            Prendre rendez-vous → meijenaturo.fr
           </a>
         </div>
       </div>
