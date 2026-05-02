@@ -995,10 +995,18 @@ function Cliente({ user, onLogout }) {
                 </div>
                 <p style={{ color: P.cTextMid, fontSize: 14, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
                 {p.fichiers?.length > 0 && (
-                  <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {p.fichiers.map((f, i) => (
-                      <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "7px 12px", color: P.cGreen, fontSize: 12, textDecoration: "none" }}>{f.name}</a>
-                    ))}
+                  <div style={{ marginTop: 14 }}>
+                    <p style={{ color: P.cTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Fichiers joints</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {p.fichiers.map((f, i) => (
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.name}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "8px 14px", color: P.cGreen, fontSize: 12, textDecoration: "none" }}>
+                          <span>{f.type?.includes("pdf") ? "📄" : "🖼"}</span>
+                          <span>{f.name}</span>
+                          <span style={{ opacity: 0.6, fontSize: 10 }}>↓</span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1216,16 +1224,23 @@ function EmptyState({ message, theme = "p" }) {
   );
 }
 
-function FileTag({ name, theme = "p" }) {
+function FileTag({ name, url, theme = "p" }) {
   const bg = theme === "p" ? P.pAccentDim : P.cGreenDim;
   const bd = theme === "p" ? P.pAccentBorder : P.cGreenBorder;
   const col = theme === "p" ? P.pAccent : P.cGreen;
-  return (
+  const inner = (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: bg, border: `1px solid ${bd}`, borderRadius: 8, padding: "6px 12px", marginBottom: 6, marginRight: 6 }}>
-      <span style={{ color: col, fontSize: 12 }}>✓</span>
+      <span style={{ color: col, fontSize: 12 }}>📎</span>
       <span style={{ color: col, fontSize: 12 }}>{name}</span>
+      {url && <span style={{ color: col, fontSize: 10, opacity: 0.7 }}>↓</span>}
     </div>
   );
+  if (url) return (
+    <a href={url} target="_blank" rel="noreferrer" download={name} style={{ textDecoration: "none" }}>
+      {inner}
+    </a>
+  );
+  return inner;
 }
 
 // ─── ESPACE PRATICIENNE ───────────────────────────────────────────────────────
@@ -1970,7 +1985,7 @@ function Praticienne({ user, onLogout }) {
                       <p style={{ color: P.pTextMid, fontSize: 13, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{p.contenu}</p>
                       {p.fichiers?.length > 0 && (
                         <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {p.fichiers.map((f, i) => <FileTag key={i} name={f.name} theme="p" />)}
+                          {p.fichiers.map((f, i) => <FileTag key={i} name={f.name} url={f.url} theme="p" />)}
                         </div>
                       )}
                     </div>
@@ -1993,7 +2008,7 @@ function Praticienne({ user, onLogout }) {
                   {uploadingProtocole && <p style={{ color: P.pAccent, fontSize: 13 }}>Upload en cours…</p>}
                   {protocoleFiles.map((f, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <FileTag name={f.name} theme="p" />
+                      <FileTag name={f.name} url={f.url} theme="p" />
                       <button onClick={() => setProtocoleFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#B5583A", fontSize: 14, cursor: "pointer" }}>×</button>
                     </div>
                   ))}
@@ -2024,7 +2039,9 @@ function Praticienne({ user, onLogout }) {
                       {a.bilans?.length > 0 && (
                         <div style={{ marginBottom: 16 }}>
                           {a.bilans.map((b, i) => (
-                            <a key={i} href={b.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "7px 12px", color: P.pAccent, fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 8 }}>{b.name}</a>
+                            <a key={i} href={b.url} target="_blank" rel="noreferrer" download={b.name} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "7px 12px", color: P.pAccent, fontSize: 13, textDecoration: "none", marginRight: 8, marginBottom: 8 }}>
+                              <span>{b.name}</span><span style={{ opacity: 0.6, fontSize: 10 }}>↓</span>
+                            </a>
                           ))}
                         </div>
                       )}
@@ -2098,8 +2115,11 @@ function Praticienne({ user, onLogout }) {
                     <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 10 }}>{new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {d.files?.map((f, i) => (
-                        <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "7px 12px", color: P.pAccent, fontSize: 12, textDecoration: "none" }}>
-                          {f.type?.includes("image") ? "🖼 " : "📄 "}{f.name}
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.name}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "7px 12px", color: P.pAccent, fontSize: 12, textDecoration: "none" }}>
+                          <span>{f.type?.includes("image") ? "🖼" : "📄"}</span>
+                          <span>{f.name}</span>
+                          <span style={{ opacity: 0.6, fontSize: 10 }}>↓</span>
                         </a>
                       ))}
                     </div>
