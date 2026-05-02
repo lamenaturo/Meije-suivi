@@ -19,11 +19,67 @@ const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Lutéale", "J
 
 const TI = [
   { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment as-tu dormi cette semaine ?" },
-  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digéré cette semaine ?" },
   { key: "energie", label: "Énergie", icon: "⚡", question: "Comment te sens-tu niveau énergie ?" },
-  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment te sens-tu au niveau des douleurs ?" },
   { key: "humeur", label: "Humeur", icon: "🌊", question: "Comment te sens-tu émotionnellement ?" },
+  { key: "anxiete", label: "Anxiété", icon: "😮‍💨", question: "Comment tu gères ton niveau de stress et d'anxiété ?" },
+  { key: "douleurs", label: "Douleurs", icon: "🔥", question: "Comment te sens-tu au niveau des douleurs ?" },
+  { key: "digestion", label: "Digestion", icon: "🌿", question: "Comment as-tu digéré cette semaine ?" },
   { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mangé cette semaine ?" },
+  { key: "peau", label: "Peau", icon: "✨", question: "Comment va ta peau cette semaine ?" },
+  { key: "poids", label: "Poids / Rétention", icon: "⚖️", question: "Comment tu te sens dans ton corps cette semaine ?" },
+];
+
+// ─── PROFILS ET SOUS-PROFILS ─────────────────────────────────────────────────
+
+const PROFILS = [
+  {
+    groupe: "Cycle hormonal",
+    sousProfiles: [
+      { key: "spm", label: "SPM", priorites: ["humeur", "anxiete", "douleurs", "sommeil", "energie"] },
+      { key: "sopk", label: "SOPK", priorites: ["energie", "douleurs", "alimentation", "poids", "sommeil"] },
+      { key: "endometriose", label: "Endométriose", priorites: ["douleurs", "energie", "humeur", "sommeil"] },
+      { key: "fertilite", label: "Fertilité", priorites: ["alimentation", "anxiete", "energie", "sommeil"] },
+      { key: "menopause", label: "Ménopause", priorites: ["sommeil", "humeur", "anxiete", "energie", "douleurs"] },
+    ]
+  },
+  {
+    groupe: "Énergie & Fatigue",
+    sousProfiles: [
+      { key: "fatigue", label: "Fatigue chronique", priorites: ["energie", "sommeil", "alimentation", "digestion", "humeur"] },
+      { key: "surmenage", label: "Surmenage", priorites: ["energie", "anxiete", "sommeil", "alimentation", "humeur"] },
+    ]
+  },
+  {
+    groupe: "Poids & Corps",
+    sousProfiles: [
+      { key: "poids_general", label: "Poids", priorites: ["alimentation", "energie", "digestion", "poids", "humeur"] },
+      { key: "retention", label: "Rétention d'eau", priorites: ["poids", "alimentation", "digestion"] },
+    ]
+  },
+  {
+    groupe: "Digestif",
+    sousProfiles: [
+      { key: "digestif", label: "Troubles digestifs", priorites: ["digestion", "alimentation", "douleurs", "energie", "peau"] },
+    ]
+  },
+  {
+    groupe: "Peau",
+    sousProfiles: [
+      { key: "peau_profil", label: "Problèmes de peau", priorites: ["peau", "alimentation", "digestion", "humeur"] },
+    ]
+  },
+  {
+    groupe: "Bien-être mental",
+    sousProfiles: [
+      { key: "mental", label: "Stress & Anxiété", priorites: ["anxiete", "humeur", "sommeil", "energie", "alimentation"] },
+    ]
+  },
+  {
+    groupe: "Sommeil",
+    sousProfiles: [
+      { key: "sommeil_profil", label: "Troubles du sommeil", priorites: ["sommeil", "anxiete", "energie", "humeur"] },
+    ]
+  },
 ];
 
 const SC = [
@@ -670,6 +726,7 @@ function Cliente({ user, onLogout }) {
   const [complements, setComplements] = useState([]);
   const [protocoles, setProtocoles] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [userProfil, setUserProfil] = useState({ profilGroupe: "", profilSous: "" });
   const [view, setView] = useState("home");
   const [scores, setScores] = useState({});
   const [notes, setNotes] = useState({});
@@ -699,7 +756,11 @@ function Cliente({ user, onLogout }) {
     const q6 = query(collection(db, "documents"), where("userUid", "==", user.uid), orderBy("date", "asc"));
     const u6 = onSnapshot(q6, s => setDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const userRef = doc(db, "users", user.uid);
-    const u4 = onSnapshot(userRef, d => { if (d.data()?.complements) setComplements(d.data().complements); });
+    const u4 = onSnapshot(userRef, d => {
+      const data = d.data();
+      if (data?.complements) setComplements(data.complements);
+      if (data?.profilGroupe !== undefined) setUserProfil({ profilGroupe: data.profilGroupe || "", profilSous: data.profilSous || "" });
+    });
     return () => { u(); u2(); u3(); u4(); u5(); u6(); };
   }, [user.uid]);
 
@@ -708,8 +769,7 @@ function Cliente({ user, onLogout }) {
     fd.append("file", file);
     fd.append("upload_preset", UPLOAD_PRESET);
     fd.append("folder", folder);
-    fd.append("resource_type", "auto");
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       const msg = errData.error?.message || "";
@@ -953,26 +1013,57 @@ function Cliente({ user, onLogout }) {
             <textarea value={cycleNote} onChange={e => setCycleNote(e.target.value)} placeholder="Précisions sur ton cycle..." rows={2} style={{ ...iP("c"), resize: "vertical" }} />
           </Section>
 
-          {/* Scores */}
-          {TI.map(item => (
-            <Section key={item.key} title={`${item.icon} ${item.question}`} theme="c">
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                {SC.map(s => {
-                  const active = scores[item.key] === s.v;
-                  return (
-                    <button key={s.v} onClick={() => setScores(p => ({ ...p, [item.key]: s.v }))} style={{
-                      padding: "8px 14px", borderRadius: 20,
-                      border: `1.5px solid ${active ? s.color : P.cBorder}`,
-                      background: active ? s.color + "18" : "transparent",
-                      color: active ? s.color : P.cTextMid,
-                      fontSize: 13, fontFamily: P.sans, fontWeight: active ? 500 : 400,
-                    }}>{s.v} · {s.label}</button>
-                  );
-                })}
+          {/* Scores — adaptés au profil */}
+          {(() => {
+            // Récupérer les priorités du profil depuis userData (stocké dans complements user doc)
+            // On les lit depuis clientData si dispo, sinon ordre par défaut
+            const profil = PROFILS.find(g => g.groupe === (userProfil.profilGroupe || ""));
+            const sous = profil?.sousProfiles.find(s => s.key === (userProfil.profilSous || ""));
+            const priorites = sous?.priorites || [];
+
+            const prioritaires = priorites.length > 0
+              ? TI.filter(t => priorites.includes(t.key))
+              : TI;
+            const secondaires = priorites.length > 0
+              ? TI.filter(t => !priorites.includes(t.key))
+              : [];
+
+            const renderQuestion = (item, isPrio) => (
+              <div key={item.key} style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <p style={{ color: P.cText, fontSize: 14, fontWeight: 500 }}>{item.icon} {item.question}</p>
+                  {isPrio && priorites.length > 0 && <span style={{ background: P.cGreenDim, border: `0.5px solid ${P.cGreenBorder}`, borderRadius: 20, padding: "2px 8px", fontSize: 9, color: P.cGreen, fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px" }}>Prioritaire</span>}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                  {SC.map(s => {
+                    const active = scores[item.key] === s.v;
+                    return (
+                      <button key={s.v} onClick={() => setScores(p => ({ ...p, [item.key]: s.v }))} style={{
+                        padding: "8px 14px", borderRadius: 20,
+                        border: `1.5px solid ${active ? s.color : P.cBorder}`,
+                        background: active ? s.color + "18" : "transparent",
+                        color: active ? s.color : P.cTextMid,
+                        fontSize: 13, fontFamily: P.sans, fontWeight: active ? 500 : 400,
+                      }}>{s.v} · {s.label}</button>
+                    );
+                  })}
+                </div>
+                <textarea value={notes[item.key] || ""} onChange={e => setNotes(p => ({ ...p, [item.key]: e.target.value }))} placeholder={`Précisions sur ${item.label.toLowerCase()}…`} rows={2} style={{ ...iP("c"), resize: "vertical" }} />
               </div>
-              <textarea value={notes[item.key] || ""} onChange={e => setNotes(p => ({ ...p, [item.key]: e.target.value }))} placeholder={`Précisions sur ${item.label.toLowerCase()}…`} rows={2} style={{ ...iP("c"), resize: "vertical" }} />
-            </Section>
-          ))}
+            );
+
+            return (
+              <>
+                {prioritaires.map(item => renderQuestion(item, true))}
+                {secondaires.length > 0 && (
+                  <div style={{ marginTop: 8, marginBottom: 16, borderTop: `1px solid ${P.cBorder}`, paddingTop: 16 }}>
+                    <p style={{ color: P.cTextDim, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 14 }}>Autres paramètres</p>
+                    {secondaires.map(item => renderQuestion(item, false))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           <Section title="Comment tu te sens globalement ?" theme="c">
             <textarea value={humeur} onChange={e => setHumeur(e.target.value)} placeholder="Fatiguée, stressée, en forme…" rows={3} style={{ ...iP("c"), resize: "vertical" }} />
@@ -1410,6 +1501,11 @@ function Praticienne({ user, onLogout }) {
     setClientStatuts(prev => ({ ...prev, [uid]: statut }));
   };
 
+  const saveProfil = async (groupe, sousProfil) => {
+    await updateDoc(doc(db, "users", selected.uid), { profilGroupe: groupe, profilSous: sousProfil });
+    showToast("Profil mis à jour ✓");
+  };
+
   const createClient = async () => {
     if (!newClientForm.prenom || !newClientForm.email || !newClientForm.password) return;
     setCreatingClient(true);
@@ -1466,9 +1562,9 @@ function Praticienne({ user, onLogout }) {
     fd.append("file", file);
     fd.append("upload_preset", UPLOAD_PRESET);
     fd.append("folder", folder);
-    fd.append("resource_type", "auto");
-    // Toujours utiliser /auto/upload — fonctionne avec le preset Format:auto
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+    // On force le endpoint /image/upload même pour les PDFs
+    // Cloudinary les stocke et les sert publiquement sans restriction
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       const msg = errData.error?.message || "";
@@ -1793,7 +1889,61 @@ function Praticienne({ user, onLogout }) {
 
           {/* Dossier */}
           {activeTab === "dossier" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+            <div>
+              {/* Sélecteur de profil */}
+              <div style={{ background: P.pSurface, borderRadius: 14, border: `0.5px solid ${P.pBorder}`, padding: "16px 18px", marginBottom: 16 }} className="card-raised-dark">
+                <p style={{ color: P.pAccent, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 14 }}>Profil de suivi</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
+                    <label style={{ color: P.pTextDim, fontSize: 11, display: "block", marginBottom: 6 }}>Problématique principale</label>
+                    <select
+                      value={clientData?.profilGroupe || ""}
+                      onChange={e => saveProfil(e.target.value, "")}
+                      style={{ ...iP("p"), fontSize: 13 }}
+                    >
+                      <option value="">— Choisir un profil —</option>
+                      {PROFILS.map(g => (
+                        <option key={g.groupe} value={g.groupe}>{g.groupe}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {clientData?.profilGroupe && (() => {
+                    const groupe = PROFILS.find(g => g.groupe === clientData.profilGroupe);
+                    if (!groupe || groupe.sousProfiles.length <= 1) return null;
+                    return (
+                      <div>
+                        <label style={{ color: P.pTextDim, fontSize: 11, display: "block", marginBottom: 6 }}>Sous-profil</label>
+                        <select
+                          value={clientData?.profilSous || ""}
+                          onChange={e => saveProfil(clientData.profilGroupe, e.target.value)}
+                          style={{ ...iP("p"), fontSize: 13 }}
+                        >
+                          <option value="">— Choisir —</option>
+                          {groupe.sousProfiles.map(s => (
+                            <option key={s.key} value={s.key}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+                  {clientData?.profilSous && (() => {
+                    const groupe = PROFILS.find(g => g.groupe === clientData.profilGroupe);
+                    const sous = groupe?.sousProfiles.find(s => s.key === clientData.profilSous);
+                    if (!sous) return null;
+                    return (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                        {sous.priorites.map(k => {
+                          const t = TI.find(i => i.key === k);
+                          return t ? <span key={k} style={{ background: P.pAccentDim, border: `0.5px solid ${P.pAccentBorder}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: P.pAccent }}>{t.icon} {t.label}</span> : null;
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Cards résumé */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
               {[
                 { key: "anamnese", label: "Questionnaire", val: anamneses.length > 0 ? `Rempli le ${new Date(anamneses[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : "Non rempli", col: P.pGreen },
                 { key: "suivi", label: "Derniers suivis", val: `${entries.length} semaine${entries.length > 1 ? "s" : ""}`, col: P.pGreen },
@@ -1807,6 +1957,7 @@ function Praticienne({ user, onLogout }) {
                   <p style={{ color: P.pText, fontSize: 14 }}>{val}</p>
                 </button>
               ))}
+              </div>
             </div>
           )}
 
