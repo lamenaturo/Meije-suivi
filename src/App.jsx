@@ -301,8 +301,8 @@ function LandingPage({ onEnter }) {
           <p style={{ color: P.pTextDim, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
             L'accès à cet espace est créé par Meije après ta prise de rendez-vous. Si tu souhaites démarrer un accompagnement, rends-toi sur son site.
           </p>
-          <a href={INSTAGRAM} target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
-            Prendre rendez-vous → @meije.naturo
+          <a href="https://meijenaturo.carrd.co" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
+            Prendre rendez-vous → meijenaturo.carrd.co
           </a>
         </div>
       </div>
@@ -418,7 +418,7 @@ function Auth({ onLogin, onBack }) {
 
       <div style={{ marginTop: 20, textAlign: "center" }}>
         <p style={{ color: P.pTextDim, fontSize: 12, lineHeight: 1.6 }}>
-          Ton espace est créé par Meije après ta consultation.
+          Ton espace t'a été envoyé par Meije suite à ton accompagnement.
         </p>
         <p style={{ color: P.pTextDim, fontSize: 11, marginTop: 12 }}>
           Suivi confidentiel ·{" "}
@@ -1982,10 +1982,14 @@ function Praticienne({ user, onLogout }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Titre" style={iP("p")} />
                   <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Message d'accompagnement…" rows={10} style={{ ...iP("p"), resize: "vertical" }} />
-                  <label style={{ display: "block", background: P.pAccentDim, border: `1px dashed ${P.pAccentBorder}`, borderRadius: 10, padding: "14px", textAlign: "center", cursor: "pointer", color: P.pAccent, fontSize: 13 }}>
-                    + Joindre un fichier
-                    <input type="file" multiple accept="image/*,application/pdf" onChange={e => uploadProtocoleFiles(Array.from(e.target.files))} style={{ display: "none" }} />
-                  </label>
+                  <div>
+                    <p style={{ color: P.pTextDim, fontSize: 12, marginBottom: 8 }}>Joindre un fichier (PDF ou image) :</p>
+                    <input
+                      type="file" multiple accept="image/*,application/pdf"
+                      onChange={e => uploadProtocoleFiles(Array.from(e.target.files))}
+                      style={{ color: P.pTextMid, fontSize: 13, display: "block", width: "100%" }}
+                    />
+                  </div>
                   {uploadingProtocole && <p style={{ color: P.pAccent, fontSize: 13 }}>Upload en cours…</p>}
                   {protocoleFiles.map((f, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
