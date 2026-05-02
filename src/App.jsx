@@ -712,7 +712,11 @@ function Cliente({ user, onLogout }) {
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `Erreur ${res.status}`);
+      const msg = errData.error?.message || "";
+      if (msg.includes("File size too large") || msg.includes("too large")) {
+        throw new Error("Fichier trop lourd (max 10 MB). Compresse-le sur ilovepdf.com avant de l'envoyer.");
+      }
+      throw new Error(msg || `Erreur ${res.status}`);
     }
     const data = await res.json();
     if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
@@ -1088,14 +1092,19 @@ function Cliente({ user, onLogout }) {
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 6 }}>Mes documents</p>
           <p style={{ color: P.cTextMid, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Envoie tes bilans, ordonnances, photos… Meije les recevra directement.</p>
           <div style={{ background: P.cSurface, borderRadius: 14, border: `1px solid ${P.cBorder}`, padding: "18px 20px", marginBottom: 20 }}>
-            <label style={{ display: "block", background: P.cGreenDim, border: `1px dashed ${P.cGreenBorder}`, borderRadius: 10, padding: "20px", textAlign: "center", cursor: "pointer", color: P.cGreen, fontSize: 13 }}>
-              + Ajouter un fichier
-              <input type="file" multiple accept="image/*,application/pdf" onChange={e => doUploadDocs(Array.from(e.target.files))} style={{ display: "none" }} />
-            </label>
-            {uploadingDocs && <p style={{ color: P.cGreen, fontSize: 13, marginTop: 10, textAlign: "center" }}>Upload en cours…</p>}
+            <div style={{ background: P.cGreenDim, border: `0.5px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+              <p style={{ color: P.cGreen, fontSize: 12 }}>📎 Max 10 MB par fichier. Si ton PDF est trop lourd, compresse-le sur <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{ color: P.cGreen, fontWeight: 500 }}>ilovepdf.com</a></p>
+            </div>
+            <p style={{ color: P.cTextMid, fontSize: 13, marginBottom: 10 }}>Sélectionne tes fichiers :</p>
+            <input
+              type="file" multiple accept="image/*,application/pdf"
+              onChange={e => doUploadDocs(Array.from(e.target.files))}
+              style={{ color: P.cTextMid, fontSize: 13, display: "block", width: "100%", marginBottom: 8 }}
+            />
+            {uploadingDocs && <p style={{ color: P.cGreen, fontSize: 13, marginTop: 10 }}>Upload en cours…</p>}
             {uploadDocs.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                {uploadDocs.map((d, i) => <FileTag key={i} name={d.name} theme="c" />)}
+                {uploadDocs.map((d, i) => <FileTag key={i} name={d.name} url={d.url} theme="c" />)}
                 <Btn variant="cPrimary" onClick={async () => {
                   await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, date: new Date().toISOString(), files: uploadDocs });
                   setUploadDocs([]);
@@ -1462,7 +1471,11 @@ function Praticienne({ user, onLogout }) {
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `Erreur ${res.status}`);
+      const msg = errData.error?.message || "";
+      if (msg.includes("File size too large") || msg.includes("too large")) {
+        throw new Error("Fichier trop lourd (max 10 MB). Compresse-le sur ilovepdf.com avant de l'envoyer.");
+      }
+      throw new Error(msg || `Erreur ${res.status}`);
     }
     const data = await res.json();
     if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
@@ -2004,7 +2017,8 @@ function Praticienne({ user, onLogout }) {
                   <input value={newProtocole.titre} onChange={e => setNewProtocole(p => ({ ...p, titre: e.target.value }))} placeholder="Titre" style={iP("p")} />
                   <textarea value={newProtocole.contenu} onChange={e => setNewProtocole(p => ({ ...p, contenu: e.target.value }))} placeholder="Message d'accompagnement…" rows={10} style={{ ...iP("p"), resize: "vertical" }} />
                   <div>
-                    <p style={{ color: P.pTextDim, fontSize: 12, marginBottom: 8 }}>Joindre un fichier (PDF ou image) :</p>
+                    <p style={{ color: P.pTextDim, fontSize: 12, marginBottom: 6 }}>Joindre un fichier (PDF ou image) :</p>
+                    <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 8 }}>Max 10 MB · Si trop lourd → <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{ color: P.pAccent }}>ilovepdf.com</a></p>
                     <input
                       type="file" multiple accept="image/*,application/pdf"
                       onChange={e => uploadProtocoleFiles(Array.from(e.target.files))}
@@ -2089,7 +2103,10 @@ function Praticienne({ user, onLogout }) {
               )}
               {anamneseMode === "upload" && (
                 <div style={{ background: P.pSurface, borderRadius: 12, border: `1px solid ${P.pBorder}`, padding: 18 }}>
-                  <p style={{ color: P.pTextMid, fontSize: 13, marginBottom: 12 }}>Sélectionne un PDF ou une photo du questionnaire papier :</p>
+                  <div style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+                    <p style={{ color: P.pAccent, fontSize: 12 }}>📎 Max 10 MB par fichier. Si ton PDF est trop lourd, compresse-le gratuitement sur <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{ color: P.pAccent, fontWeight: 500 }}>ilovepdf.com</a> avant de l'envoyer.</p>
+                  </div>
+                  <p style={{ color: P.pTextMid, fontSize: 13, marginBottom: 12 }}>Sélectionne un PDF ou une photo :</p>
                   <input
                     type="file"
                     multiple
