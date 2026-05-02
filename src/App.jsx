@@ -896,17 +896,6 @@ function Cliente({ user, onLogout }) {
               );
             }
 
-            // Lien visio
-            if (userProfil.visioLink) {
-              notifs.push(
-                <a key="visio" href={userProfil.visioLink} target="_blank" rel="noreferrer" style={{ display: "block", width: "100%", background: P.cSurface, border: `1px solid ${P.cBorder}`, borderLeft: `3px solid #5A8ABE`, borderRadius: 14, padding: "14px 18px", marginBottom: 12, textDecoration: "none" }} className="card-raised">
-                  <p style={{ fontSize: 10, color: "#5A8ABE", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 6 }}>🎥 Lien visio</p>
-                  <p style={{ color: P.cText, fontSize: 13, fontWeight: 500 }}>Rejoindre la consultation →</p>
-                  <p style={{ color: P.cTextDim, fontSize: 11, marginTop: 4 }}>Google Meet · Clique pour rejoindre</p>
-                </a>
-              );
-            }
-
             // Nouveau protocole
             if (protocoles.length > 0) {
               const last = protocoles[protocoles.length - 1];
@@ -2463,25 +2452,6 @@ function Praticienne({ user, onLogout }) {
           {/* Message */}
           {activeTab === "message" && (
             <div>
-              {/* Lien visio */}
-              <div style={{ background: P.pSurface, border: `0.5px solid ${P.pBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 16 }} className="card-raised-dark">
-                <p style={{ color: P.pAccent, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10 }}>🎥 Lien visio Google Meet</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    value={clientData?.visioLink || ""}
-                    onChange={async e => {
-                      await updateDoc(doc(db, "users", selected.uid), { visioLink: e.target.value });
-                    }}
-                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                    style={{ ...iP("p"), flex: 1, fontSize: 13 }}
-                  />
-                  {clientData?.visioLink && (
-                    <a href={clientData.visioLink} target="_blank" rel="noreferrer" style={{ background: P.pGreenDim, border: `1px solid ${P.pGreen}44`, borderRadius: 10, padding: "10px 14px", color: P.pGreen, fontSize: 12, textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center" }}>Tester →</a>
-                  )}
-                </div>
-                <p style={{ color: P.pTextDim, fontSize: 11, marginTop: 8 }}>Ce lien s'affiche dans l'espace de {selected.prenom} — elle peut le retrouver à tout moment.</p>
-              </div>
-
               {messages.length === 0
                 ? <EmptyState message={`Aucun message envoyé à ${selected.prenom}.`} theme="p" />
                 : messages.map(m => (
