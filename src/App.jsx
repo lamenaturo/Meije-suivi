@@ -1038,7 +1038,7 @@ function Cliente({ user, onLogout }) {
               <div key={item.key} style={{ marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <p style={{ color: P.cText, fontSize: 14, fontWeight: 500 }}>{item.icon} {item.question}</p>
-                  {isPrio && priorites.length > 0 && <span style={{ background: P.cGreenDim, border: `0.5px solid ${P.cGreenBorder}`, borderRadius: 20, padding: "2px 8px", fontSize: 9, color: P.cGreen, fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px" }}>Prioritaire</span>}
+                  {isPrio && toutesLesPriorites.length > 0 && <span style={{ background: P.cGreenDim, border: `0.5px solid ${P.cGreenBorder}`, borderRadius: 20, padding: "2px 8px", fontSize: 9, color: P.cGreen, fontWeight: 500, textTransform: "uppercase", letterSpacing: "1px" }}>Prioritaire</span>}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {SC.map(s => {
