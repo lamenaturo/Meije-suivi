@@ -1893,6 +1893,28 @@ function Praticienne({ user, onLogout }) {
             </div>
           </div>
 
+          {/* Cards récap — menu d'accueil de la fiche */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 18 }}>
+            {[
+              { key: "suivi", label: "Suivis", val: entries.length, unit: `semaine${entries.length > 1 ? "s" : ""}`, col: P.pGreen, icon: "📝" },
+              { key: "protocole", label: "Protocoles", val: protocoles.length, unit: `envoyé${protocoles.length > 1 ? "s" : ""}`, col: P.pAccent, icon: "🌿" },
+              { key: "complements", label: "Compléments", val: clientData?.complements?.length || 0, unit: `prescrit${(clientData?.complements?.length || 0) > 1 ? "s" : ""}`, col: P.pGreen, icon: "💊" },
+              { key: "anamnese", label: "Questionnaire", val: anamneses.length > 0 ? "✓" : "–", unit: anamneses.length > 0 ? "rempli" : "en attente", col: anamneses.length > 0 ? P.pGreen : P.pTextDim, icon: "📋" },
+              { key: "documents", label: "Documents", val: documents.length, unit: `fichier${documents.length > 1 ? "s" : ""}`, col: P.pGreen, icon: "📁" },
+              { key: "message", label: "Messages", val: messages.length, unit: `envoyé${messages.length > 1 ? "s" : ""}`, col: P.pAccent, icon: "💬" },
+            ].map(({ key, label, val, unit, col, icon }) => (
+              <button key={key} onClick={() => setActiveTab(key)} style={{
+                background: P.pSurface, borderRadius: 12, border: `0.5px solid ${P.pBorder}`,
+                padding: "12px 14px", textAlign: "left", cursor: "pointer",
+              }} className="card-raised-dark">
+                <p style={{ fontSize: 16, marginBottom: 6 }}>{icon}</p>
+                <p style={{ fontFamily: P.serif, fontSize: 22, color: col, fontWeight: 300, lineHeight: 1 }}>{val}</p>
+                <p style={{ color: P.pTextDim, fontSize: 10, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.5px" }}>{unit}</p>
+                <p style={{ color: P.pTextMid, fontSize: 11, marginTop: 2 }}>{label}</p>
+              </button>
+            ))}
+          </div>
+
           {/* Tabs */}
           <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
             {TABS_CLIENT.map(({ key, label }) => (
@@ -2292,6 +2314,14 @@ function Praticienne({ user, onLogout }) {
                       {a.form && Object.keys(a.form).length > 0 && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {[
+                            ["Nom complet", a.form.nom],
+                            ["Date de naissance", a.form.dateNaissance],
+                            ["Âge", a.form.age],
+                            ["Taille / Poids", a.form.taille && `${a.form.taille} cm / ${a.form.poids} kg`],
+                            ["Adresse", a.form.adresse],
+                            ["Téléphone", a.form.telephone],
+                            ["Profession", a.form.profession],
+                            ["Situation familiale", a.form.situationFamiliale],
                             ["Problématique principale", a.form.problematique],
                             ["Durée du problème", a.form.dureeProbleme],
                             ["Impact vie quotidienne", a.form.impactVieQuotidienne],
