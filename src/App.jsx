@@ -1862,16 +1862,19 @@ function Praticienne({ user, onLogout }) {
                 <Chip label={`${entries.length} suivi${entries.length > 1 ? "s" : ""}`} color={P.pGreen} />
                 {anamneses.length > 0 && <Chip label="Questionnaire rempli" color={P.pGreen} />}
                 {protocoles.length > 0 && <Chip label={`${protocoles.length} protocole${protocoles.length > 1 ? "s" : ""}`} color={P.pAccent} />}
-                {/* Statut */}
-                <select
-                  value={clientData?.statut || "en cours"}
-                  onChange={e => saveStatut(selected.uid, e.target.value)}
-                  style={{ background: P.pBg, border: `0.5px solid ${P.pBorder}`, borderRadius: 20, padding: "3px 10px", color: P.pTextMid, fontFamily: P.sans, fontSize: 11, cursor: "pointer" }}
-                >
-                  <option value="en cours">En cours</option>
-                  <option value="en pause">En pause</option>
-                  <option value="terminé">Terminé</option>
-                </select>
+                {/* Statut — boutons custom */}
+                {["en cours", "en pause", "terminé"].map(s => {
+                  const active = (clientData?.statut || "en cours") === s;
+                  const cols = { "en cours": P.pGreen, "en pause": "#B8A05A", "terminé": P.pTextDim };
+                  return (
+                    <button key={s} onClick={() => saveStatut(selected.uid, s)} style={{
+                      padding: "3px 10px", borderRadius: 20, border: `0.5px solid ${active ? cols[s] + "66" : P.pBorder}`,
+                      background: active ? cols[s] + "22" : "transparent",
+                      color: active ? cols[s] : P.pTextDim,
+                      fontFamily: P.sans, fontSize: 11, cursor: "pointer", fontWeight: active ? 500 : 400,
+                    }}>{s}</button>
+                  );
+                })}
               </div>
             </div>
           </div>
