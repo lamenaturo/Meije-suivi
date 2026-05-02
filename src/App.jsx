@@ -759,7 +759,7 @@ function Cliente({ user, onLogout }) {
     const u4 = onSnapshot(userRef, d => {
       const data = d.data();
       if (data?.complements) setComplements(data.complements);
-      if (data?.profilGroupe !== undefined) setUserProfil({ profilGroupe: data.profilGroupe || "", profilSous: data.profilSous || "" });
+      setUserProfil({ profils: data?.profils || [] });
     });
     return () => { u(); u2(); u3(); u4(); u5(); u6(); };
   }, [user.uid]);
@@ -1017,15 +1017,18 @@ function Cliente({ user, onLogout }) {
           {(() => {
             // Récupérer les priorités du profil depuis userData (stocké dans complements user doc)
             // On les lit depuis clientData si dispo, sinon ordre par défaut
-            const profil = PROFILS.find(g => g.groupe === (userProfil.profilGroupe || ""));
-            const sous = profil?.sousProfiles.find(s => s.key === (userProfil.profilSous || ""));
-            const priorites = sous?.priorites || [];
+            const toutesLesPriorites = [...new Set(
+              (userProfil.profils || []).flatMap(key => {
+                const sous = PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === key);
+                return sous?.priorites || [];
+              })
+            )];
 
-            const prioritaires = priorites.length > 0
-              ? TI.filter(t => priorites.includes(t.key))
+            const prioritaires = toutesLesPriorites.length > 0
+              ? TI.filter(t => toutesLesPriorites.includes(t.key))
               : TI;
-            const secondaires = priorites.length > 0
-              ? TI.filter(t => !priorites.includes(t.key))
+            const secondaires = toutesLesPriorites.length > 0
+              ? TI.filter(t => !toutesLesPriorites.includes(t.key))
               : [];
 
             const renderQuestion = (item, isPrio) => (
@@ -1863,7 +1866,7 @@ function Praticienne({ user, onLogout }) {
                 <select
                   value={clientData?.statut || "en cours"}
                   onChange={e => saveStatut(selected.uid, e.target.value)}
-                  style={{ background: P.pSurface2, border: `0.5px solid ${P.pBorder}`, borderRadius: 20, padding: "3px 10px", color: P.pTextMid, fontFamily: P.sans, fontSize: 11, cursor: "pointer" }}
+                  style={{ background: P.pBg, border: `0.5px solid ${P.pBorder}`, borderRadius: 20, padding: "3px 10px", color: P.pTextMid, fontFamily: P.sans, fontSize: 11, cursor: "pointer" }}
                 >
                   <option value="en cours">En cours</option>
                   <option value="en pause">En pause</option>
@@ -1890,56 +1893,61 @@ function Praticienne({ user, onLogout }) {
           {/* Dossier */}
           {activeTab === "dossier" && (
             <div>
-              {/* Sélecteur de profil */}
+              {/* Sélecteur de profil — multi-sélection */}
               <div style={{ background: P.pSurface, borderRadius: 14, border: `0.5px solid ${P.pBorder}`, padding: "16px 18px", marginBottom: 16 }} className="card-raised-dark">
-                <p style={{ color: P.pAccent, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 14 }}>Profil de suivi</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div>
-                    <label style={{ color: P.pTextDim, fontSize: 11, display: "block", marginBottom: 6 }}>Problématique principale</label>
-                    <select
-                      value={clientData?.profilGroupe || ""}
-                      onChange={e => saveProfil(e.target.value, "")}
-                      style={{ ...iP("p"), fontSize: 13 }}
-                    >
-                      <option value="">— Choisir un profil —</option>
-                      {PROFILS.map(g => (
-                        <option key={g.groupe} value={g.groupe}>{g.groupe}</option>
-                      ))}
-                    </select>
+                <p style={{ color: P.pAccent, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 4 }}>Profils de suivi</p>
+                <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 14 }}>Tu peux sélectionner plusieurs profils si elle consulte pour plusieurs problématiques.</p>
+
+                {PROFILS.map(g => (
+                  <div key={g.groupe} style={{ marginBottom: 14 }}>
+                    <p style={{ color: P.pTextMid, fontSize: 11, fontWeight: 500, marginBottom: 8, letterSpacing: "0.3px" }}>{g.groupe}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {g.sousProfiles.map(s => {
+                        const selected_profils = clientData?.profils || [];
+                        const active = selected_profils.includes(s.key);
+                        return (
+                          <button key={s.key} onClick={async () => {
+                            const current = clientData?.profils || [];
+                            const updated = active
+                              ? current.filter(k => k !== s.key)
+                              : [...current, s.key];
+                            await updateDoc(doc(db, "users", selected.uid), { profils: updated });
+                            showToast(active ? `${s.label} retiré` : `${s.label} ajouté ✓`);
+                          }} style={{
+                            padding: "7px 13px", borderRadius: 20,
+                            border: `1.5px solid ${active ? P.pGreen : P.pBorder}`,
+                            background: active ? P.pGreenDim : "transparent",
+                            color: active ? P.pGreen : P.pTextMid,
+                            fontFamily: P.sans, fontSize: 12, fontWeight: active ? 500 : 400, cursor: "pointer",
+                          }}>
+                            {active ? "✓ " : ""}{s.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  {clientData?.profilGroupe && (() => {
-                    const groupe = PROFILS.find(g => g.groupe === clientData.profilGroupe);
-                    if (!groupe || groupe.sousProfiles.length <= 1) return null;
-                    return (
-                      <div>
-                        <label style={{ color: P.pTextDim, fontSize: 11, display: "block", marginBottom: 6 }}>Sous-profil</label>
-                        <select
-                          value={clientData?.profilSous || ""}
-                          onChange={e => saveProfil(clientData.profilGroupe, e.target.value)}
-                          style={{ ...iP("p"), fontSize: 13 }}
-                        >
-                          <option value="">— Choisir —</option>
-                          {groupe.sousProfiles.map(s => (
-                            <option key={s.key} value={s.key}>{s.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })()}
-                  {clientData?.profilSous && (() => {
-                    const groupe = PROFILS.find(g => g.groupe === clientData.profilGroupe);
-                    const sous = groupe?.sousProfiles.find(s => s.key === clientData.profilSous);
-                    if (!sous) return null;
-                    return (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                        {sous.priorites.map(k => {
+                ))}
+
+                {/* Axes prioritaires combinés */}
+                {(clientData?.profils?.length > 0) && (() => {
+                  const toutesLesPriorites = [...new Set(
+                    (clientData.profils || []).flatMap(key => {
+                      const sous = PROFILS.flatMap(g => g.sousProfiles).find(s => s.key === key);
+                      return sous?.priorites || [];
+                    })
+                  )];
+                  return (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${P.pBorder}` }}>
+                      <p style={{ color: P.pTextDim, fontSize: 11, marginBottom: 8 }}>Axes prioritaires dans son suivi</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {toutesLesPriorites.map(k => {
                           const t = TI.find(i => i.key === k);
                           return t ? <span key={k} style={{ background: P.pAccentDim, border: `0.5px solid ${P.pAccentBorder}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: P.pAccent }}>{t.icon} {t.label}</span> : null;
                         })}
                       </div>
-                    );
-                  })()}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Cards résumé */}
