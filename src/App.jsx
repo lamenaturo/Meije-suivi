@@ -2221,10 +2221,65 @@ function Praticienne({ user, onLogout }) {
                   ? <EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p" />
                   : anamneses.map(a => (
                     <div key={a.id}>
-                      <p style={{ color: P.pTextDim, fontSize: 12, marginBottom: 14 }}>
-                        Rempli le {new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-                        {a.saisieParPraticienne && <span style={{ color: P.pAccent, marginLeft: 8 }}>· Saisi par toi</span>}
-                      </p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                        <p style={{ color: P.pTextDim, fontSize: 12 }}>
+                          Rempli le {new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                          {a.saisieParPraticienne && <span style={{ color: P.pAccent, marginLeft: 8 }}>· Saisi par toi</span>}
+                        </p>
+                        {a.form && Object.keys(a.form).length > 0 && (
+                          <button onClick={() => {
+                            const fields = [
+                              ["Problématique principale", a.form.problematique],
+                              ["Durée du problème", a.form.dureeProbleme],
+                              ["Impact vie quotidienne", a.form.impactVieQuotidienne],
+                              ["Objectifs 3 mois", a.form.objectifs3mois],
+                              ["Antécédents médicaux", a.form.maladiesChroniques],
+                              ["Médicaments", a.form.medicaments],
+                              ["Compléments actuels", a.form.complementsActuels],
+                              ["Coucher / Lever", a.form.heureCoucher && `${a.form.heureCoucher} / ${a.form.heureLever}`],
+                              ["Qualité sommeil", a.form.qualiteSommeil && `${a.form.qualiteSommeil} / 10`],
+                              ["Niveau stress", a.form.niveauStress && `${a.form.niveauStress} / 10`],
+                              ["Sources de stress", a.form.sourcesStress],
+                              ["Âge des règles", a.form.ageRegles],
+                              ["Durée cycle / règles", a.form.dureeCycle && `${a.form.dureeCycle}j / ${a.form.dureeRegles}j`],
+                              ["Intensité douleurs", a.form.intensiteDouleurs && `${a.form.intensiteDouleurs} / 10`],
+                              ["Description douleurs", a.form.descriptionDouleurs],
+                              ["Petit-déjeuner", a.form.petitDejeunerType],
+                              ["Déjeuner", a.form.dejeunerType],
+                              ["Dîner", a.form.dinerType],
+                              ["Eau / jour", a.form.quantiteEau],
+                              ["Motivation", a.form.motivation && `${a.form.motivation} / 10`],
+                              ["Attentes", a.form.attentes],
+                              ["Informations supplémentaires", a.form.infosSup],
+                            ].filter(([_, v]) => v);
+
+                            const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+                            <title>Questionnaire — ${selected.prenom}</title>
+                            <style>
+                              body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #1E1208; line-height: 1.6; }
+                              h1 { font-size: 26px; font-weight: 300; margin-bottom: 4px; color: #1C1410; }
+                              .meta { color: #888; font-size: 13px; margin-bottom: 32px; font-family: sans-serif; }
+                              .section { margin-bottom: 8px; display: flex; gap: 16px; padding: 10px 14px; border-radius: 6px; background: #f8f4ef; }
+                              .label { font-size: 12px; color: #8A5A2A; min-width: 180px; flex-shrink: 0; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 2px; }
+                              .value { font-size: 14px; color: #1E1208; }
+                              .footer { margin-top: 40px; font-size: 11px; color: #aaa; font-family: sans-serif; border-top: 1px solid #e0d8ce; padding-top: 12px; }
+                              @media print { body { margin: 20px; } }
+                            </style></head><body>
+                            <h1>Questionnaire de santé — ${selected.prenom}</h1>
+                            <p class="meta">meije.naturo · Rempli le ${new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+                            ${fields.map(([label, val]) => `<div class="section"><span class="label">${label}</span><span class="value">${val}</span></div>`).join("")}
+                            <p class="footer">Document confidentiel — meije.naturo © ${new Date().getFullYear()}</p>
+                            </body></html>`;
+
+                            const w = window.open("", "_blank");
+                            w.document.write(html);
+                            w.document.close();
+                            setTimeout(() => w.print(), 500);
+                          }} style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 8, padding: "6px 14px", color: P.pAccent, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>
+                            📄 Exporter PDF
+                          </button>
+                        )}
+                      </div>
                       {a.bilans?.length > 0 && (
                         <div style={{ marginBottom: 16 }}>
                           {a.bilans.map((b, i) => (
