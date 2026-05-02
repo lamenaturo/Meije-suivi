@@ -708,9 +708,12 @@ function Cliente({ user, onLogout }) {
     fd.append("file", file);
     fd.append("upload_preset", UPLOAD_PRESET);
     fd.append("folder", folder);
-    const endpoint = file.type === "application/pdf" ? "raw" : "image";
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`, { method: "POST", body: fd });
-    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    fd.append("resource_type", "auto");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Erreur ${res.status}`);
+    }
     const data = await res.json();
     if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
     return { url: data.secure_url, name: file.name, type: file.type };
@@ -1454,10 +1457,13 @@ function Praticienne({ user, onLogout }) {
     fd.append("file", file);
     fd.append("upload_preset", UPLOAD_PRESET);
     fd.append("folder", folder);
-    const isPDF = file.type === "application/pdf";
-    const endpoint = isPDF ? "raw" : "image";
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`, { method: "POST", body: fd });
-    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    fd.append("resource_type", "auto");
+    // Toujours utiliser /auto/upload — fonctionne avec le preset Format:auto
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Erreur ${res.status}`);
+    }
     const data = await res.json();
     if (!data.secure_url) throw new Error(data.error?.message || "Upload échoué");
     return { url: data.secure_url, name: file.name, type: file.type };
