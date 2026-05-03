@@ -1403,59 +1403,6 @@ function FileTag({ name, url, theme = "p" }) {
   return inner;
 }
 
-// ─── NOTIFICATIONS PRATICIENNE ───────────────────────────────────────────────
-
-function NotifsPraticienne({ db, onClose, setCount }) {
-  const [items, setItems] = useState([]);
-
-  useEffect(() => {
-    const now = Date.now();
-    const since = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const notifs = [];
-    let pending = 3;
-    const done = () => { pending--; if (pending === 0) { const sorted = notifs.sort((a,b) => new Date(b.date) - new Date(a.date)); setItems(sorted); setCount(sorted.length); }};
-
-    // Nouveaux questionnaires
-    const qQuery = query(collection(db, "anamneses"), orderBy("date", "desc"));
-    onSnapshot(qQuery, snap => {
-      const news = snap.docs.filter(d => d.data().date > since);
-      news.forEach(d => { const data = d.data(); if (!notifs.find(n => n.id === d.id)) notifs.push({ id: d.id, type: "questionnaire", text: `${data.prénom || "Une consultante"} a rempli son questionnaire`, date: data.date }); });
-      done();
-    });
-
-    // Nouveaux bilans
-    const dQuery = query(collection(db, "documents"), orderBy("date", "desc"));
-    onSnapshot(dQuery, snap => {
-      const news = snap.docs.filter(d => d.data().date > since);
-      news.forEach(d => { const data = d.data(); if (!notifs.find(n => n.id === d.id)) notifs.push({ id: d.id, type: "bilan", text: `${data.userEmail || "Une consultante"} a envoyé des bilans`, date: data.date }); });
-      done();
-    });
-
-    // Nouveaux messages
-    const mQuery = query(collection(db, "messages"), orderBy("date", "desc"));
-    onSnapshot(mQuery, snap => {
-      const news = snap.docs.filter(d => d.data().date > since && d.data().from !== "praticienne");
-      news.forEach(d => { const data = d.data(); if (!notifs.find(n => n.id === d.id)) notifs.push({ id: d.id, type: "message", text: `Nouveau message de ${data.userEmail || "une consultante"}`, date: data.date }); });
-      done();
-    });
-  }, [db, setCount]);
-
-  const icons = { questionnaire: "📋", bilan: "📄", message: "💬" };
-
-  if (items.length === 0) return <p style={{ color: "rgba(242,232,218,0.4)", fontSize: 13, textAlign: "center", padding: "16px 0" }}>Aucune activité récente 🌿</p>;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-      {items.map(n => (
-        <div key={n.id} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", borderLeft: "3px solid rgba(200,133,108,0.5)" }}>
-          <p style={{ fontSize: 13, color: "rgba(242,232,218,0.85)" }}>{icons[n.type]} {n.text}</p>
-          <p style={{ fontSize: 11, color: "rgba(242,232,218,0.3)", marginTop: 4 }}>{new Date(n.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── ESPACE PRATICIENNE ───────────────────────────────────────────────────────
 
 const PRAT_NAV = [
@@ -1493,9 +1440,7 @@ function Praticienne({ user, onLogout }) {
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("dossier");
   const [mainView, setMainView] = useState("dashboard");
-  const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [notifsPrat, setNotifsPrat] = useState([]);
-  const [notifCount, setNotifCount] = useState(0);
+
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const [sendingProtocole, setSendingProtocole] = useState(false);
   const [newComplement, setNewComplement] = useState({ nom: "", lien: "", posologie: "", codePromo: "" });
@@ -1795,18 +1740,7 @@ function Praticienne({ user, onLogout }) {
             {selected && mainView === "fiche" && (
               <button onClick={() => { setSelected(null); setMainView("clients"); }} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 14px", color: P.pTextMid, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>← Retour</button>
             )}
-            <div style={{ position: "relative" }}>
-              <button onClick={() => setShowNotifPanel(p => !p)} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 12px", color: P.pTextMid, fontSize: 16, fontFamily: P.sans, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                🔔
-                {notifCount > 0 && <span style={{ background: P.pAccent, color: "#fff", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{notifCount}</span>}
-              </button>
-              {showNotifPanel && (
-                <div style={{ position: "absolute", top: 44, right: 0, width: 300, background: P.pBg, border: `1px solid ${P.pBorder}`, borderRadius: 16, padding: 16, zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-                  <p style={{ fontFamily: P.serif, fontSize: 15, color: P.pText, marginBottom: 12, fontWeight: 400 }}>Activité récente</p>
-                  <NotifsPraticienne db={db} onClose={() => setShowNotifPanel(false)} setCount={setNotifCount} />
-                </div>
-              )}
-            </div>
+
             <button onClick={onLogout} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>Déconnexion</button>
           </div>
         </div>
