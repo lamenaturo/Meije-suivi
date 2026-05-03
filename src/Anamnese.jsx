@@ -267,13 +267,53 @@ export default function Anamnese({ user, onDone, readonly, existingData }) {
     setUploadingFiles(false);
   };
 
+  const generatePDF = async (data) => {
+    // Génération d'un PDF texte via Cloudinary
+    const lines = [
+      "ANAMNÈSE — " + (data.form?.nom || user.email),
+      "Date : " + new Date(data.date).toLocaleDateString("fr-FR"),
+      "Email : " + user.email,
+      "",
+      "=== MOTIF DE CONSULTATION ===",
+      "Problématique : " + (data.form?.problematique || "—"),
+      "Durée : " + (data.form?.dureeProbleme || "—"),
+      "",
+      "=== INFORMATIONS GÉNÉRALES ===",
+      "Né(e) le : " + (data.form?.dateNaissance || "—"),
+      "Taille : " + (data.form?.taille || "—") + " cm",
+      "Poids : " + (data.form?.poids || "—") + " kg",
+      "Profession : " + (data.form?.profession || "—"),
+      "Situation familiale : " + (data.form?.situationFamiliale || "—"),
+      "",
+      "=== ANTÉCÉDENTS ===",
+      "Médicaux : " + (data.form?.antecedentsMedicaux || "—"),
+      "Chirurgicaux : " + (data.form?.antecedentsChirurgicaux || "—"),
+      "Familiaux : " + (data.form?.antecedentsFamiliaux || "—"),
+      "",
+      "=== HYGIÈNE DE VIE ===",
+      "Alimentation : " + (data.form?.alimentation || "—"),
+      "Activité physique : " + (data.form?.activitePhysique || "—"),
+      "Sommeil : " + (data.form?.sommeil || "—"),
+      "Stress : " + (data.form?.stress || "—"),
+      "",
+      "=== SCORE THYROÏDE ===",
+      "Score : " + (data.thyroideScore || 0) + "/10",
+      "Interprétation : " + (data.thyroideInterpretation || "—"),
+    ].join("\n");
+
+    // Stocker comme texte dans Firestore (l'IA le lira directement)
+    return lines;
+  };
+
   const submit = async () => {
     setSaving(true);
-    await addDoc(collection(db, "anamneses"), {
+    const docData = {
       userUid: user.uid, userEmail: user.email, userPrenom: user.prenom,
       date: new Date().toISOString(), form, thyroideScore, thyroideInterpretation,
       bilans: uploadedFiles,
-    });
+    };
+    const pdfText = await generatePDF({ ...docData, date: new Date().toISOString() });
+    await addDoc(collection(db, "anamneses"), { ...docData, pdfText });
     setSaved(true); setSaving(false);
     try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STEP_KEY); } catch {}
     setTimeout(() => onDone(), 2500);
