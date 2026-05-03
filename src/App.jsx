@@ -345,8 +345,8 @@ function LandingPage({ onEnter }) {
           <button onClick={onEnter} style={{ background: P.pAccent, color: "#1C1410", border: "none", borderRadius: 30, padding: "14px 32px", fontFamily: P.sans, fontSize: 14, fontWeight: 500, cursor: "pointer", letterSpacing: "0.3px", boxShadow: "0 4px 14px rgba(200,133,108,0.3)" }}>
             Accéder à mon espace
           </button>
-          <a href={INSTAGRAM} target="_blank" rel="noreferrer" style={{ background: P.pSurface, color: P.pTextMid, border: `1px solid ${P.pBorder}`, borderRadius: 30, padding: "14px 24px", fontFamily: P.sans, fontSize: 14, textDecoration: "none", display: "inline-block" }}>
-            @meije.naturo
+          <a href={INSTAGRAM} target="_blank" rel="noreferrer" style={{ background: P.pAccent, color: "#1C1410", border: "none", borderRadius: 30, padding: "14px 32px", fontFamily: P.sans, fontSize: 14, fontWeight: 500, cursor: "pointer", letterSpacing: "0.3px", boxShadow: "0 4px 14px rgba(200,133,108,0.3)", textDecoration: "none", display: "inline-block" }}>
+            Mon Instagram
           </a>
           <a href="https://meijenaturo.fr" style={{ background: "transparent", color: P.pTextMid, border: `1px solid ${P.pBorder}`, borderRadius: 30, padding: "14px 24px", fontFamily: P.sans, fontSize: 14, textDecoration: "none", display: "inline-block" }}>
             ← meijenaturo.fr
