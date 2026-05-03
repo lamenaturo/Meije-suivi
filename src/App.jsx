@@ -329,6 +329,10 @@ function LandingPage({ onEnter }) {
     <div style={{ minHeight: "100vh", background: P.pBg, fontFamily: P.sans, overflowX: "hidden",
       backgroundImage: "radial-gradient(ellipse at 20% 10%, rgba(200,133,108,0.14) 0%, transparent 50%), radial-gradient(ellipse at 85% 80%, rgba(122,158,130,0.1) 0%, transparent 50%)" }}>
 
+      <div style={{ position: "absolute", top: 16, left: 20, zIndex: 10 }}>
+        <a href="https://meijenaturo.fr" style={{ color: "rgba(242,232,218,0.3)", fontSize: 12, fontFamily: P.sans, textDecoration: "none", letterSpacing: "0.5px" }}>← meijenaturo.fr</a>
+      </div>
+
       {/* Hero */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "60px 24px 40px", textAlign: "center" }}>
         <p style={{ fontSize: 10, color: P.pAccent, letterSpacing: "3px", textTransform: "uppercase", marginBottom: 20, animation: "fadeIn 0.6s ease" }}>Naturopathie fonctionnelle</p>
@@ -348,9 +352,7 @@ function LandingPage({ onEnter }) {
           <a href={INSTAGRAM} target="_blank" rel="noreferrer" style={{ background: P.pAccent, color: "#1C1410", border: "none", borderRadius: 30, padding: "14px 32px", fontFamily: P.sans, fontSize: 14, fontWeight: 500, cursor: "pointer", letterSpacing: "0.3px", boxShadow: "0 4px 14px rgba(200,133,108,0.3)", textDecoration: "none", display: "inline-block" }}>
             Mon Instagram
           </a>
-          <a href="https://meijenaturo.fr" style={{ background: "transparent", color: P.pTextMid, border: `1px solid ${P.pBorder}`, borderRadius: 30, padding: "14px 24px", fontFamily: P.sans, fontSize: 14, textDecoration: "none", display: "inline-block" }}>
-            ← meijenaturo.fr
-          </a>
+
         </div>
       </div>
 
