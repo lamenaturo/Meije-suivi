@@ -348,6 +348,9 @@ function LandingPage({ onEnter }) {
           <a href={INSTAGRAM} target="_blank" rel="noreferrer" style={{ background: P.pSurface, color: P.pTextMid, border: `1px solid ${P.pBorder}`, borderRadius: 30, padding: "14px 24px", fontFamily: P.sans, fontSize: 14, textDecoration: "none", display: "inline-block" }}>
             @meije.naturo
           </a>
+          <a href="https://meijenaturo.fr" style={{ background: "transparent", color: P.pTextMid, border: `1px solid ${P.pBorder}`, borderRadius: 30, padding: "14px 24px", fontFamily: P.sans, fontSize: 14, textDecoration: "none", display: "inline-block" }}>
+            ← meijenaturo.fr
+          </a>
         </div>
       </div>
 
