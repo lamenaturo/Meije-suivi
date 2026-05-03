@@ -1782,9 +1782,6 @@ function Praticienne({ user, onLogout }) {
     <div style={{ minHeight: "100vh", background: P.pBg, fontFamily: P.sans, paddingBottom: 80 }}>
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
 
-      {/* Notifications listener */}
-      {/* eslint-disable-next-line react-hooks/exhaustive-deps */}
-
       {/* Header */}
       <div style={pHeader}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
