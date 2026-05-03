@@ -1458,6 +1458,8 @@ function Praticienne({ user, onLogout }) {
   const [showNewClient, setShowNewClient] = useState(false);
   const [toast, setToast] = useState("");
   const [privateNotes, setPrivateNotes] = useState("");
+  const [protoPrat, setProtoPrat] = useState("");
+  const [savingProtoPrat, setSavingProtoPrat] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [noteHistory, setNoteHistory] = useState([]);
   const showToast = useCallback((msg) => setToast(msg), []);
@@ -1541,6 +1543,17 @@ function Praticienne({ user, onLogout }) {
     setPrivateNotes("");
     setMainView("fiche");
   }, []);
+
+  const saveProtoPrat = async () => {
+    if (!protoPrat.trim() || !selected) return;
+    setSavingProtoPrat(true);
+    await setDoc(doc(db, "notes_privees", `proto_${selected.uid}`), {
+      clientUid: selected.uid, type: "protocole_praticienne",
+      text: protoPrat.trim(), date: new Date().toISOString(),
+    });
+    setSavingProtoPrat(false);
+    showToast("Protocole praticienne enregistré ✓");
+  };
 
   const saveNote = async () => {
     if (!privateNotes.trim()) return;
@@ -2516,6 +2529,48 @@ function Praticienne({ user, onLogout }) {
                 </div>
               )}
               {noteHistory.length === 0 && <EmptyState message="Aucune note enregistrée pour l'instant." theme="p" />}
+
+              {/* Protocole praticienne */}
+              <div style={{ marginTop: 28 }}>
+                <p style={{ color: P.pTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 12 }}>🔒 Protocole praticienne (privé)</p>
+                <div style={{ background: P.pAccentDim, border: `1px solid ${P.pAccentBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
+                  <p style={{ color: P.pAccent, fontSize: 11 }}>Ce protocole est uniquement visible par toi. Il ne sera jamais montré à {selected.prenom}.</p>
+                </div>
+                <textarea
+                  value={protoPrat}
+                  onChange={e => setProtoPrat(e.target.value)}
+                  placeholder={`Données brutes, axes de travail, compléments envisagés pour ${selected.prenom}…`}
+                  rows={6}
+                  style={{ ...iP("p"), resize: "vertical", marginBottom: 10 }}
+                />
+                <Btn onClick={saveProtoPrat} disabled={savingProtoPrat || !protoPrat.trim()} variant="primary" style={{ marginBottom: 8 }}>
+                  {savingProtoPrat ? "Enregistrement…" : "Enregistrer le protocole"}
+                </Btn>
+              </div>
+
+              {/* PDF Anamnèse */}
+              {(() => {
+                const ana = anamneses.find(a => a.userUid === selected.uid);
+                if (!ana?.pdfText) return null;
+                return (
+                  <div style={{ marginTop: 28 }}>
+                    <p style={{ color: P.pTextDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 12 }}>📄 Récap anamnèse (généré automatiquement)</p>
+                    <div style={{ background: P.pSurface, border: `1px solid ${P.pBorder}`, borderRadius: 12, padding: "16px", marginBottom: 10 }}>
+                      <pre style={{ color: P.pTextMid, fontSize: 12, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: P.sans }}>{ana.pdfText}</pre>
+                    </div>
+                    <button onClick={() => {
+                      const blob = new Blob([ana.pdfText], { type: "text/plain" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `anamnese_${selected.prenom}_${new Date(ana.date).toLocaleDateString("fr-FR").replace(/\//g, "-")}.txt`;
+                      a.click();
+                    }} style={{ background: P.pAccent, color: "#FAF4EC", border: "none", borderRadius: 20, padding: "8px 18px", fontFamily: P.sans, fontSize: 12, cursor: "pointer" }}>
+                      ⬇ Télécharger le récap
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
