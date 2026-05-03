@@ -1439,7 +1439,7 @@ function Praticienne({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("dossier");
-  const [mainView, setMainView] = useState("dashboard");
+  const [mainView, setMainView] = useState("profil");
 
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const [sendingProtocole, setSendingProtocole] = useState(false);
