@@ -1492,7 +1492,7 @@ function Praticienne({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("dossier");
-  const [mainView, setMainView] = useState("clients");
+  const [mainView, setMainView] = useState("dashboard");
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [notifsPrat, setNotifsPrat] = useState([]);
   const [notifCount, setNotifCount] = useState(0);
@@ -1937,8 +1937,9 @@ function Praticienne({ user, onLogout }) {
               const colors = { suivi: P.pGreen, anamnese: P.pAccent, document: P.pGreen };
               const daysAgo = Math.floor((Date.now() - new Date(a.date).getTime()) / (1000 * 60 * 60 * 24));
               const timeLabel = daysAgo === 0 ? "Aujourd'hui" : daysAgo === 1 ? "Hier" : `Il y a ${daysAgo} j`;
+              const clientCible = clients.find(c => c.uid === (a.userUid || a.clientUid) || c.email === a.userEmail);
               return (
-                <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, background: P.pSurface, borderRadius: 10, border: `0.5px solid ${P.pBorder}`, padding: "10px 14px", marginBottom: 8 }} className="card-raised-dark">
+                <div key={a.id} onClick={() => { if (clientCible) { setSelected(clientCible); setMainView("fiche"); }}} style={{ display: "flex", alignItems: "center", gap: 12, background: P.pSurface, borderRadius: 10, border: `0.5px solid ${P.pBorder}`, padding: "10px 14px", marginBottom: 8, cursor: clientCible ? "pointer" : "default" }} className="card-raised-dark">
                   <span style={{ fontSize: 16 }}>{icons[a.type]}</span>
                   <div style={{ flex: 1 }}>
                     <p style={{ color: P.pText, fontSize: 13 }}><span style={{ color: colors[a.type], fontWeight: 500 }}>{prenom}</span> {labels[a.type]}</p>
