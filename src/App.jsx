@@ -827,7 +827,7 @@ function Cliente({ user, onLogout }) {
     </div>
   );
 
-  if (anamneseView) return <Anamnese user={user} onDone={() => setAnamneseView(false)} readonly={hasAnamnese} existingData={anamneses[0]} />;
+  if (anamneseView) return <Anamnese user={user} onDone={() => setAnamneseView(false)} readonly={false} existingData={anamneses[0]} />;
 
   const pageStyle = { minHeight: "100vh", background: P.cBg, paddingBottom: 80, fontFamily: P.sans };
   const headerStyle = {
@@ -1198,7 +1198,7 @@ function Cliente({ user, onLogout }) {
         <div style={inner} className="fade-in">
           <button onClick={() => setView("home")} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 13, fontFamily: P.sans, marginBottom: 16, cursor: "pointer" }}>← Retour</button>
           <p style={{ fontFamily: P.serif, fontSize: 22, color: P.cText, fontWeight: 300, marginBottom: 6 }}>Mes documents</p>
-          <p style={{ color: P.cTextMid, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Envoie tes bilans, ordonnances, photos… Meije les recevra directement.</p>
+          <p style={{ color: P.cTextMid, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Envoie tes bilans sanguins, photos, résultats… Meije les recevra directement.</p>
           <div style={{ background: P.cSurface, borderRadius: 14, border: `1px solid ${P.cBorder}`, padding: "18px 20px", marginBottom: 20 }}>
             <div style={{ background: P.cGreenDim, border: `0.5px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
               <p style={{ color: P.cGreen, fontSize: 12 }}>📎 Max 10 MB par fichier. Si ton PDF est trop lourd, compresse-le sur <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{ color: P.cGreen, fontWeight: 500 }}>ilovepdf.com</a></p>
@@ -1212,7 +1212,12 @@ function Cliente({ user, onLogout }) {
             {uploadingDocs && <p style={{ color: P.cGreen, fontSize: 13, marginTop: 10 }}>Upload en cours…</p>}
             {uploadDocs.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                {uploadDocs.map((d, i) => <FileTag key={i} name={d.name} url={d.url} theme="c" />)}
+                {uploadDocs.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+                    <span style={{ color: P.cGreen, fontSize: 12 }}>📎 {d.name}</span>
+                    <button onClick={() => setUploadDocs(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: P.cTextMid, fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
                 <Btn variant="cPrimary" onClick={async () => {
                   await addDoc(collection(db, "documents"), { userUid: user.uid, userEmail: user.email, date: new Date().toISOString(), files: uploadDocs });
                   try { await sendEmail(EMAILJS_TEMPLATE_BIENVENUE, { prenom: user.prénom, action: "a partagé des documents", to_email: PRATICIENNE_EMAIL }); } catch {}
@@ -1222,6 +1227,34 @@ function Cliente({ user, onLogout }) {
               </div>
             )}
           </div>
+
+          {documents.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ color: P.cTextMid, fontSize: 12, marginBottom: 10 }}>Bilans déjà envoyés :</p>
+              {documents.map(d => (
+                <div key={d.id} style={{ background: P.cSurface, borderRadius: 12, border: `1px solid ${P.cBorder}`, padding: "12px 16px", marginBottom: 8 }}>
+                  <p style={{ color: P.cTextDim, fontSize: 11, marginBottom: 8 }}>{new Date(d.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {d.files?.map((f, i) => (
+                      <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5, background: P.cGreenDim, border: `1px solid ${P.cGreenBorder}`, borderRadius: 8, padding: "6px 10px", color: P.cGreen, fontSize: 12, textDecoration: "none" }}>
+                        <span>{f.type?.includes("image") ? "🖼" : "📄"}</span>
+                        <span>{f.name}</span>
+                        <span style={{ opacity: 0.6, fontSize: 10 }}>↓</span>
+                      </a>
+                    ))}
+                  </div>
+                  <button onClick={async () => {
+                    if (window.confirm("Supprimer ce bilan ?")) {
+                      const { deleteDoc, doc: docRef } = await import("firebase/firestore");
+                      await deleteDoc(docRef(db, "documents", d.id));
+                      showToast("Bilan supprimé ✓");
+                    }
+                  }} style={{ marginTop: 10, background: "none", border: "none", color: "rgba(181,88,58,0.6)", fontSize: 12, cursor: "pointer", fontFamily: P.sans }}>🗑 Supprimer ce bilan</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
