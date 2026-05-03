@@ -1440,6 +1440,7 @@ function Praticienne({ user, onLogout }) {
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("dossier");
   const [mainView, setMainView] = useState("profil");
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   const [newProtocole, setNewProtocole] = useState({ titre: "", contenu: "" });
   const [sendingProtocole, setSendingProtocole] = useState(false);
@@ -1741,6 +1742,34 @@ function Praticienne({ user, onLogout }) {
               <button onClick={() => { setSelected(null); setMainView("clients"); }} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 14px", color: P.pTextMid, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>← Retour</button>
             )}
 
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setShowNotifPanel(p => !p)} style={{ background: P.pSurface2, border: `1px solid ${P.pBorder}`, borderRadius: 20, padding: "7px 14px", color: P.pTextMid, fontSize: 15, fontFamily: P.sans, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                🔔
+                {recentActivity.length > 0 && <span style={{ background: P.pAccent, color: "#1C1410", borderRadius: 20, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>{recentActivity.length}</span>}
+              </button>
+              {showNotifPanel && (
+                <div style={{ position: "absolute", top: 44, right: 0, width: 280, background: "#2A1E14", border: `1px solid ${P.pBorder}`, borderRadius: 16, padding: 16, zIndex: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+                  <p style={{ fontFamily: P.serif, fontSize: 15, color: P.pText, marginBottom: 12 }}>Activité récente</p>
+                  {recentActivity.length === 0
+                    ? <p style={{ color: P.pTextDim, fontSize: 13 }}>Aucune activité 🌿</p>
+                    : recentActivity.slice(0, 8).map((a, i) => {
+                      const prenom = a.userPrénom || a.userPrenom || a.clientPrenom || "—";
+                      const icons = { suivi: "📝", anamnese: "📋", document: "📁" };
+                      const labels = { suivi: "a rempli son suivi", anamnese: "a envoyé son questionnaire", document: "a partagé des documents" };
+                      const daysAgo = Math.floor((Date.now() - new Date(a.date).getTime()) / (1000*60*60*24));
+                      const timeLabel = daysAgo === 0 ? "Aujourd'hui" : daysAgo === 1 ? "Hier" : `Il y a ${daysAgo}j`;
+                      const clientCible = clients.find(c => c.uid === (a.userUid || a.clientUid));
+                      return (
+                        <div key={i} onClick={() => { if (clientCible) { setSelected(clientCible); setMainView("fiche"); setShowNotifPanel(false); }}} style={{ padding: "8px 10px", borderRadius: 10, marginBottom: 6, background: "rgba(255,255,255,0.04)", cursor: clientCible ? "pointer" : "default", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                          <p style={{ fontSize: 12, color: "rgba(242,232,218,0.8)" }}>{icons[a.type]} <span style={{ color: P.pAccent }}>{prenom}</span> {labels[a.type]}</p>
+                          <p style={{ fontSize: 10, color: "rgba(242,232,218,0.3)", flexShrink: 0 }}>{timeLabel}</p>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              )}
+            </div>
             <button onClick={onLogout} style={{ background: "none", border: "none", color: P.pTextDim, fontSize: 12, fontFamily: P.sans, cursor: "pointer" }}>Déconnexion</button>
           </div>
         </div>
