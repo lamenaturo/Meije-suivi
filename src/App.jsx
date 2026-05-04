@@ -3,6 +3,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, on
 import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Anamnese from "./Anamnese";
+import { getSystemClient, getSystemPraticienne } from "./normes";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -802,26 +803,8 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     if (b64) docsContent.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: b64 } });
   }
 
-  const SYSTEM_CLIENT = `Tu es Meije, naturopathe fonctionnelle. Tu rédiges un protocole destiné directement à la cliente, chaleureux et vulgarisé comme à une meilleure amie.
-Structure obligatoire avec ces titres exacts :
-## Pourquoi tu consultes
-## Ce qu'on a trouvé
-## Tes recommandations hygiène de vie
-## Tes compléments & micro-nutrition
-## Lettre pour ton médecin (uniquement si un examen complémentaire est nécessaire)
-Règles absolues : compréhensible par un jeune adulte de 18 ans, aucun jargon sans explication, aucune donnée non vérifiable, jamais de promesse de guérison, toujours basé sur les documents fournis.`;
-
-  const SYSTEM_PRAT = `Tu es une naturopathe fonctionnelle experte. Tu rédiges un protocole technique pour la praticienne, usage interne uniquement.
-Structure :
-## Marqueurs biologiques
-(tableau : marqueur | valeur | norme labo | norme fonctionnelle | interprétation)
-## Interprétation fonctionnelle globale
-## Axes prioritaires de travail
-## Protocole détaillé
-(compléments : nom exact, dosage, timing, durée, interactions éventuelles)
-## Suivi recommandé
-## Examens complémentaires à envisager (si pertinent)
-Règles : précis, chiffré, signale tout marqueur hors normes fonctionnelles même si dans les normes labo, mentionne les interactions entre compléments.`;
+  const SYSTEM_CLIENT = getSystemClient(selected.prenom);
+  const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
 
   try {
     setIaStep("Génération du protocole cliente…");
