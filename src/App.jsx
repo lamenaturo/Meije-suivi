@@ -808,11 +808,10 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
 
   try {
     setIaStep("Génération du protocole cliente…");
-    const r1 = await fetch("https://api.anthropic.com/v1/messages", {
+    const r1 = await fetch("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
         max_tokens: 4000,
         system: SYSTEM_CLIENT,
         messages: [{ role: "user", content: [
@@ -825,11 +824,10 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
 
     setIaStep("Génération du protocole praticienne…");
-    const r2 = await fetch("https://api.anthropic.com/v1/messages", {
+    const r2 = await fetch("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
         max_tokens: 4000,
         system: SYSTEM_PRAT,
         messages: [{ role: "user", content: [
