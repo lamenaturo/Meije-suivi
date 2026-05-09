@@ -409,12 +409,12 @@ function BottomNav({ items, active, onChange, theme }) {
   const bg=theme==="p"?P.pBg:(P.cNavBg||P.cSurface2),border=theme==="p"?P.pBorder:P.cBorder;
   const activeColor=theme==="p"?P.pAccent:P.cGreen,inactiveColor=theme==="p"?P.pTextDim:P.cTextDim;
   return (
-    <div style={{ position:"fixed", bottom:0, left:0, right:0, background:bg, borderTop:`1px solid ${border}`, display:"flex", paddingBottom:"env(safe-area-inset-bottom, 8px)", zIndex:100 }}>
+    <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme==="p"?"linear-gradient(to top,#160E06,#1E1408)":bg, borderTop:`1px solid ${theme==="p"?"rgba(200,133,108,0.2)":border}`, boxShadow:theme==="p"?"0 -4px 20px rgba(0,0,0,0.5)":"0 -2px 10px rgba(0,0,0,0.15)", display:"flex", paddingBottom:"env(safe-area-inset-bottom, 8px)", zIndex:100 }}>
       {items.map(({key,label,icon,badge})=>{
         const isActive=active===key;
         return (
-          <button key={key} onClick={()=>onChange(key)} style={{ flex:1, border:"none", background:"none", padding:"10px 4px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:3, color:isActive?activeColor:inactiveColor, fontFamily:P.sans, fontSize:10, fontWeight:isActive?500:400, transition:"color 0.2s", position:"relative" }}>
-            <span style={{ fontSize:20, lineHeight:1, position:"relative" }}>
+          <button key={key} onClick={()=>onChange(key)} style={{ flex:1, border:"none", background:isActive&&theme==="p"?"rgba(200,133,108,0.08)":"none", padding:"12px 4px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, color:isActive?activeColor:inactiveColor, fontFamily:P.sans, fontSize:10, fontWeight:isActive?600:400, letterSpacing:isActive?"0.5px":"0", transition:"all 0.2s", position:"relative", borderRadius:"12px 12px 0 0" }}>
+            <span style={{ fontSize:22, lineHeight:1, position:"relative", filter:isActive?"drop-shadow(0 0 6px rgba(200,133,108,0.5))":"none", transition:"filter 0.2s" }}>
               {icon}
               {badge>0&&<span style={{ position:"absolute", top:-2, right:-4, width:8, height:8, background:activeColor, borderRadius:"50%", display:"block" }}/>}
             </span>
@@ -988,7 +988,7 @@ function Praticienne({ user, onLogout }) {
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setShowNotifPanel(p=>{if(!p)setSeenCount(recentActivity.length);return!p;})}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{setSeenCount(recentActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 🔔{recentActivity.length>seenCount&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.length-seenCount}</span>}
               </button>
               {showNotifPanel&&(
@@ -1127,7 +1127,7 @@ function Praticienne({ user, onLogout }) {
             ))}
           </div>
 
-          <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:4,marginBottom:20}}>
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginTop:16,marginBottom:20,paddingTop:4}}>
             {TABS_CLIENT.map(({key,label})=>(
               <button key={key} onClick={()=>setActiveTab(key)} style={{flexShrink:0,padding:"8px 14px",borderRadius:20,border:`1px solid ${activeTab===key?P.pAccentBorder:P.pBorder}`,background:activeTab===key?P.pAccentDim:"transparent",color:activeTab===key?P.pAccent:P.pTextDim,fontFamily:P.sans,fontSize:12,fontWeight:activeTab===key?500:400,whiteSpace:"nowrap",transition:"all 0.2s"}}>{label}</button>
             ))}
