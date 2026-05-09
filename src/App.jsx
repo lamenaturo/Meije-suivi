@@ -722,6 +722,7 @@ const PRAT_NAV = [
 ];
 
 const TABS_CLIENT = [
+  { key:"infos", label:"Infos" },
   { key:"suivi", label:"Suivis" },
   { key:"evolution", label:"Évolution" },
   { key:"complements", label:"Compléments" },
@@ -867,7 +868,7 @@ function Praticienne({ user, onLogout }) {
   const [documents,setDocuments]=useState([]);const [newMsg,setNewMsg]=useState("");
   const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
-  const [activeTab,setActiveTab]=useState("suivi");const [mainView,setMainView]=useState("profil");
+  const [activeTab,setActiveTab]=useState("infos");const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
   const [showNotifPanel,setShowNotifPanel]=useState(false);const [seenCount,setSeenCount]=useState(0);
   const [newProtocole,setNewProtocole]=useState({titre:"",contenu:""});
   const [sendingProtocole,setSendingProtocole]=useState(false);
@@ -916,7 +917,7 @@ function Praticienne({ user, onLogout }) {
 
   const select=useCallback(c=>{
     if(window._clientUnsubs)window._clientUnsubs.forEach(fn=>fn());
-    setSelected(c);setNewMsg("");setActiveTab("suivi");setAnamneseMode("view");setIaError("");setIaStep("");
+    setSelected(c);setNewMsg("");setActiveTab("infos");setAnamneseMode("view");setIaError("");setIaStep("");
     setClientData(null);setEntries([]);setMessages([]);setAnamneses([]);setProtocoles([]);setDocuments([]);setNoteHistory([]);
     setNewProtocole({titre:getDefaultTitre(c.prenom,0),contenu:getDefaultMessage(c.prenom)});
     const userRef=doc(db,"users",c.uid);
@@ -1148,6 +1149,54 @@ function Praticienne({ user, onLogout }) {
               ))}
             </div>
           </details>
+
+          {/* ── TAB INFOS ── */}
+          {activeTab==="infos"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <p style={{color:P.pTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px"}}>Informations de la consultante</p>
+                <button onClick={()=>{if(!editInfos)setInfosForm({prenom:selected.prenom||"",nom:selected.nom||"",dateNaissance:selected.dateNaissance||"",adresse:selected.adresse||"",tel:selected.tel||"",email:selected.email||""});setEditInfos(p=>!p);}} style={{background:editInfos?P.pAccentDim:"transparent",border:`1px solid ${editInfos?P.pAccentBorder:P.pBorder}`,borderRadius:20,padding:"6px 14px",color:editInfos?P.pAccent:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>
+                  {editInfos?"Annuler":"✏️ Modifier"}
+                </button>
+              </div>
+              {[
+                {label:"Prénom",key:"prenom"},
+                {label:"Nom",key:"nom"},
+                {label:"Date de naissance",key:"dateNaissance",placeholder:"JJ/MM/AAAA"},
+                {label:"Adresse",key:"adresse",placeholder:"Rue, ville, code postal"},
+                {label:"Téléphone",key:"tel",placeholder:"06 00 00 00 00"},
+                {label:"Email",key:"email",readonly:true},
+              ].map(({label,key,placeholder,readonly:ro})=>(
+                <div key={key} style={{marginBottom:12}}>
+                  <p style={{color:P.pTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>{label}</p>
+                  {editInfos&&!ro
+                    ?<input value={infosForm[key]||""} onChange={e=>setInfosForm(p=>({...p,[key]:e.target.value}))} placeholder={placeholder||label} style={{width:"100%",background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+                    :<div style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <p style={{color:selected[key]?P.pText:P.pTextDim,fontSize:13,fontFamily:P.sans}}>{selected[key]||"—"}</p>
+                      <button onClick={()=>navigator.clipboard.writeText(selected[key]||"")} style={{background:"none",border:"none",color:P.pTextDim,cursor:"pointer",fontSize:12,padding:"2px 6px"}} title="Copier">📋</button>
+                    </div>
+                  }
+                </div>
+              ))}
+              {editInfos&&(
+                <button onClick={async()=>{
+                  setSavingInfos(true);
+                  await updateDoc(doc(db,"users",selected.uid),{
+                    prenom:infosForm.prenom,
+                    nom:infosForm.nom,
+                    dateNaissance:infosForm.dateNaissance,
+                    adresse:infosForm.adresse,
+                    tel:infosForm.tel,
+                  });
+                  setEditInfos(false);
+                  setSavingInfos(false);
+                  showToast("Informations mises à jour ✓");
+                }} disabled={savingInfos} style={{width:"100%",background:P.pAccent,color:"#1C1410",border:"none",borderRadius:30,padding:"12px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",marginTop:8}}>
+                  {savingInfos?"Enregistrement…":"Enregistrer les modifications"}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* ── TAB SUIVIS ── */}
           {activeTab==="suivi"&&(
