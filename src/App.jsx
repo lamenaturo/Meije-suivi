@@ -869,7 +869,9 @@ function Praticienne({ user, onLogout }) {
   const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
   const [activeTab,setActiveTab]=useState("infos");const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
-  const [showNotifPanel,setShowNotifPanel]=useState(false);const [lastSeenTs,setLastSeenTs]=useState(()=>parseInt(localStorage.getItem("notif_seen_ts")||"0",10));
+  const [showNotifPanel,setShowNotifPanel]=useState(false);
+  const [seenIds,setSeenIds]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("notif_seen_ids")||"[]"));}catch{return new Set();}});
+  const markAllSeen=()=>{const ids=recentActivity.map(a=>a.id);localStorage.setItem("notif_seen_ids",JSON.stringify(ids));setSeenIds(new Set(ids));};
   const [newProtocole,setNewProtocole]=useState({titre:"",contenu:""});
   const [sendingProtocole,setSendingProtocole]=useState(false);
   const [newComplement,setNewComplement]=useState({nom:"",lien:"",posologie:"",codePromo:""});
@@ -988,8 +990,8 @@ function Praticienne({ user, onLogout }) {
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{const ts=Date.now();localStorage.setItem("notif_seen_ts",ts);setLastSeenTs(ts);setShowNotifPanel(p=>!p);}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-                🔔{recentActivity.filter(a=>new Date(a.date).getTime()>lastSeenTs).length>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.filter(a=>new Date(a.date).getTime()>lastSeenTs).length}</span>}
+              <button onClick={()=>{markAllSeen();setShowNotifPanel(p=>!p);}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                🔔{recentActivity.filter(a=>!seenIds.has(a.id)).length>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.filter(a=>!seenIds.has(a.id)).length}</span>}
               </button>
               {showNotifPanel&&(
                 <div style={{position:"absolute",top:44,right:0,width:280,background:"#2A1E14",border:`1px solid ${P.pBorder}`,borderRadius:16,padding:16,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
