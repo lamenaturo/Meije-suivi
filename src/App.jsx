@@ -1044,7 +1044,7 @@ function Praticienne({ user, onLogout }) {
               <button key={c.uid} onClick={()=>select(c)} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 18px",textAlign:"left",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all 0.15s"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <div style={{width:42,height:42,borderRadius:"50%",background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:18,color:P.pAccent,flexShrink:0}}>{(c.prenom||"?")[0].toUpperCase()}</div>
-                  <div><p style={{color:P.pText,fontWeight:500,fontSize:15}}>{c.prenom}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{c.email}</p></div>
+                  <div><p style={{color:P.pText,fontWeight:500,fontSize:15}}>{c.prenom}{c.nom?" "+c.nom:""}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{c.email}</p></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {(()=>{const s=c.statut||"en cours";const cols={"en cours":P.pGreen,"en pause":"#B8A05A","terminé":P.pTextDim};return<span style={{fontSize:10,color:cols[s],background:cols[s]+"18",border:`0.5px solid ${cols[s]}44`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{s}</span>;})()}
@@ -1171,7 +1171,7 @@ function Praticienne({ user, onLogout }) {
           <div style={{background:P.pSurface,borderRadius:14,border:`1px solid ${P.pBorder}`,padding:"18px 20px",marginBottom:18,display:"flex",alignItems:"center",gap:16}}>
             <div style={{width:52,height:52,borderRadius:"50%",background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:22,color:P.pAccent,flexShrink:0}}>{(selected.prenom||"?")[0].toUpperCase()}</div>
             <div style={{flex:1}}>
-              <p style={{fontFamily:P.serif,fontSize:20,color:P.pText,fontWeight:400}}>{selected.prenom}</p>
+              <p style={{fontFamily:P.serif,fontSize:20,color:P.pText,fontWeight:400}}>{selected.prenom}{selected.nom?" "+selected.nom:""}</p>
               <p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{selected.email}</p>
               <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8,alignItems:"center"}}>
                 <Chip label={`${entries.length} suivi${entries.length>1?"s":""}`} color={P.pGreen}/>
