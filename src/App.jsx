@@ -866,7 +866,7 @@ function Praticienne({ user, onLogout }) {
   const [entries,setEntries]=useState([]);const [messages,setMessages]=useState([]);
   const [anamneses,setAnamneses]=useState([]);const [protocoles,setProtocoles]=useState([]);
   const [documents,setDocuments]=useState([]);const [newMsg,setNewMsg]=useState("");
-  const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);
+  const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
   const [activeTab,setActiveTab]=useState("infos");const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
   const [showNotifPanel,setShowNotifPanel]=useState(false);const [seenCount,setSeenCount]=useState(0);
@@ -1058,15 +1058,79 @@ function Praticienne({ user, onLogout }) {
 
       {/* ── MESSAGES GLOBAUX ── */}
       {mainView==="messages"&&(
-        <div style={pInner} className="fade-in">
-          <p style={{fontFamily:P.serif,fontSize:22,color:P.pText,fontWeight:300,marginBottom:20}}>Messages envoyés</p>
-          {allMessages.length===0?<EmptyState message="Aucun message envoyé." theme="p"/>
-            :allMessages.slice(0,30).map(m=>(
-              <div key={m.id} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 18px",marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><p style={{color:P.pAccent,fontSize:12,fontWeight:500}}>→ {m.toPrenom}</p><p style={{color:P.pTextDim,fontSize:11}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</p></div>
-                <p style={{color:P.pTextMid,fontSize:13,lineHeight:1.6}}>{m.text}</p>
-              </div>
-            ))}
+        <div style={{...pInner,display:"flex",gap:16,height:"calc(100vh - 120px)",overflow:"hidden"}} className="fade-in">
+          {/* Liste conversations */}
+          <div style={{width:260,flexShrink:0,overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
+            <p style={{fontFamily:P.serif,fontSize:18,color:P.pText,fontWeight:300,marginBottom:8}}>Conversations</p>
+            {clients.length===0?<EmptyState message="Aucune consultante." theme="p"/>
+              :clients.map(c=>{
+                const lastMsg=[...allMessages].filter(m=>m.userUid===c.uid||m.toUid===c.uid).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+                const isActive=msgConv?.uid===c.uid;
+                return(
+                  <button key={c.uid} onClick={async()=>{
+                    setMsgConv(c);
+                    const qc=query(collection(db,"messages"),where("userUid","==",c.uid),orderBy("date","asc"));
+                    onSnapshot(qc,s=>setConvMessages(s.docs.map(d=>({id:d.id,...d.data()}))));
+                  }} style={{background:isActive?P.pAccentDim:P.pSurface,border:`1px solid ${isActive?P.pAccentBorder:P.pBorder}`,borderRadius:12,padding:"12px 14px",textAlign:"left",cursor:"pointer",transition:"all 0.2s"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                      <p style={{color:isActive?P.pAccent:P.pText,fontSize:13,fontWeight:500}}>{c.prenom} {c.nom||""}</p>
+                      {lastMsg&&<p style={{color:P.pTextDim,fontSize:10}}>{new Date(lastMsg.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</p>}
+                    </div>
+                    {lastMsg&&<p style={{color:P.pTextDim,fontSize:11,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",maxWidth:180}}>{lastMsg.from==="praticienne"?"Toi : ":""}{lastMsg.text}</p>}
+                  </button>
+                );
+              })
+            }
+          </div>
+
+          {/* Fil de conversation */}
+          <div style={{flex:1,display:"flex",flexDirection:"column",background:P.pSurface,borderRadius:16,border:`1px solid ${P.pBorder}`,overflow:"hidden"}}>
+            {!msgConv
+              ?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{color:P.pTextDim,fontSize:13}}>Sélectionne une conversation 🌿</p></div>
+              :<>
+                {/* Header conversation */}
+                <div style={{padding:"14px 18px",borderBottom:`1px solid ${P.pBorder}`,display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:P.pAccentDim,display:"flex",alignItems:"center",justifyContent:"center",color:P.pAccent,fontWeight:600,fontSize:14}}>{msgConv.prenom?.[0]}</div>
+                  <div>
+                    <p style={{color:P.pText,fontSize:14,fontWeight:500}}>{msgConv.prenom} {msgConv.nom||""}</p>
+                    <p style={{color:P.pTextDim,fontSize:11}}>{msgConv.email}</p>
+                  </div>
+                </div>
+                {/* Messages */}
+                <div style={{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
+                  {convMessages.length===0?<p style={{color:P.pTextDim,fontSize:13,textAlign:"center",marginTop:20}}>Aucun message encore 🌿</p>
+                    :convMessages.map(m=>{
+                      const isMe=m.from==="praticienne";
+                      return(
+                        <div key={m.id} style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start"}}>
+                          <div style={{maxWidth:"75%",background:isMe?P.pAccentDim:P.pSurface2,border:`1px solid ${isMe?P.pAccentBorder:P.pBorder}`,borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px"}}>
+                            <p style={{color:isMe?P.pAccent:P.pText,fontSize:13,lineHeight:1.6}}>{m.text}</p>
+                            <p style={{color:P.pTextDim,fontSize:10,marginTop:4,textAlign:isMe?"right":"left"}}>{new Date(m.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+                {/* Zone saisie */}
+                <div style={{padding:"12px 18px",borderTop:`1px solid ${P.pBorder}`,display:"flex",gap:10,alignItems:"flex-end"}}>
+                  <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();document.getElementById("send-msg-btn").click();}}} placeholder={`Écrire à ${msgConv.prenom}…`} rows={2} style={{flex:1,background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,resize:"none",outline:"none"}}/>
+                  <button id="send-msg-btn" disabled={!msgText.trim()||sendingMsg} onClick={async()=>{
+                    if(!msgText.trim())return;
+                    setSendingMsg(true);
+                    await addDoc(collection(db,"messages"),{
+                      userUid:msgConv.uid,toPrenom:msgConv.prenom,toUid:msgConv.uid,
+                      text:msgText.trim(),date:new Date().toISOString(),from:"praticienne",read:false
+                    });
+                    setMsgText("");
+                    setSendingMsg(false);
+                  }} style={{background:P.pAccent,color:"#1C1410",border:"none",borderRadius:12,padding:"10px 16px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap",opacity:msgText.trim()?1:0.5}}>
+                    {sendingMsg?"…":"Envoyer →"}
+                  </button>
+                </div>
+              </>
+            }
+          </div>
         </div>
       )}
 
