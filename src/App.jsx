@@ -269,7 +269,7 @@ function Auth({ onLogin, onBack }) {
     try {
       const c = await signInWithEmailAndPassword(auth, email, password);
       const d = await getDoc(doc(db, "users", c.user.uid));
-      onLogin({ uid:c.user.uid, email, prénom:d.data()?.prénom||"", role:email===PRATICIENNE_EMAIL?"praticienne":"cliente" });
+      onLogin({ uid:c.user.uid, email, prénom:d.data()?.prénom||d.data()?.prenom||"", nom:d.data()?.nom||"", role:email===PRATICIENNE_EMAIL?"praticienne":"cliente" });
     } catch { setError("Email ou mot de passe incorrect."); }
     setLoading(false);
   };
@@ -507,7 +507,7 @@ function Cliente({ user, onLogout }) {
       <div style={headerStyle}>
         <div style={{maxWidth:600,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <p style={{fontFamily:P.serif,fontSize:20,color:P.cText,fontWeight:300,letterSpacing:"0.5px"}}>Bonjour <em style={{fontStyle:"italic",color:P.cGreen}}>{user.prénom}</em></p>
+            <p style={{fontFamily:P.serif,fontSize:20,color:P.cText,fontWeight:300,letterSpacing:"0.5px"}}>Bonjour <em style={{fontStyle:"italic",color:P.cGreen}}>{user.prénom}{user.nom?" "+user.nom:""}</em></p>
             <p style={{fontSize:11,color:P.cTextDim,letterSpacing:"1px",textTransform:"uppercase",marginTop:1}}>meije.naturo</p>
           </div>
           <button onClick={onLogout} style={{background:"none",border:"none",fontFamily:P.sans,fontSize:12,color:P.cTextDim,cursor:"pointer"}}>Déconnexion</button>
@@ -665,7 +665,7 @@ function Cliente({ user, onLogout }) {
           <div style={{background:P.cSurface,borderRadius:16,border:`0.5px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="card-raised">
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
               <div style={{width:48,height:48,borderRadius:"50%",background:P.cGreenDim,border:`1.5px solid ${P.cGreenBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:20,color:P.cGreen}}>{user.prénom?.[0]?.toUpperCase()||"?"}</div>
-              <div><p style={{color:P.cText,fontSize:16,fontFamily:P.serif,fontWeight:400}}>{user.prénom}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{user.email}</p></div>
+              <div><p style={{color:P.cText,fontSize:16,fontFamily:P.serif,fontWeight:400}}>{user.prénom}{user.nom?" "+user.nom:""}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{user.email}</p></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
               {[["Semaines",entries.length],["Protocoles",protocoles.length],["Documents",documents.length]].map(([l,v])=><div key={l} style={{background:P.cSurface2,borderRadius:10,padding:"10px 12px",textAlign:"center"}}><p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300}}>{v}</p><p style={{color:P.cTextDim,fontSize:10,marginTop:2}}>{l}</p></div>)}
@@ -1516,7 +1516,7 @@ export default function App() {
   useEffect(()=>{
     setPersistence(auth,browserLocalPersistence).catch(console.error);
     const u=onAuthStateChanged(auth,async fw=>{
-      if(fw){const d=await getDoc(doc(db,"users",fw.uid));setUser({uid:fw.uid,email:fw.email,prénom:d.data()?.prénom||"",role:fw.email===PRATICIENNE_EMAIL?"praticienne":"cliente"});setShowLanding(false);}
+      if(fw){const d=await getDoc(doc(db,"users",fw.uid));setUser({uid:fw.uid,email:fw.email,prénom:d.data()?.prénom||d.data()?.prenom||"",nom:d.data()?.nom||"",role:fw.email===PRATICIENNE_EMAIL?"praticienne":"cliente"});setShowLanding(false);}
       else setUser(null);
       setChecking(false);
     });
