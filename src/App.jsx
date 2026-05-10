@@ -10,7 +10,7 @@ import { getSystemClient, getSystemPraticienne } from "./normes";
 const PRATICIENNE_EMAIL = process.env.REACT_APP_PRATICIENNE_EMAIL || "lamenaturo@gmail.com";
 const INSTAGRAM = process.env.REACT_APP_INSTAGRAM || "https://www.instagram.com/meije.naturo";
 const CLOUD_NAME = "di45b4ymc";
-const UPLOAD_PRESET = "meije_naturo";
+const UPLOAD_PRESET = "meije_naturo_public";
 const EMAILJS_SERVICE = "service_5bi57sr";
 const EMAILJS_TEMPLATE = "template_3w471uo";
 const EMAILJS_TEMPLATE_BIENVENUE = "template_im5mm8v";
