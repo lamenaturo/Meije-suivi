@@ -269,7 +269,7 @@ function Auth({ onLogin, onBack }) {
     try {
       const c = await signInWithEmailAndPassword(auth, email, password);
       const d = await getDoc(doc(db, "users", c.user.uid));
-      onLogin({ uid:c.user.uid, email, prénom:d.data()?.prénom||d.data()?.prenom||"", nom:d.data()?.nom||"", role:email===PRATICIENNE_EMAIL?"praticienne":"cliente" });
+      onLogin({ uid:c.user.uid, email, prénom:d.data()?.prénom||"", role:email===PRATICIENNE_EMAIL?"praticienne":"cliente" });
     } catch { setError("Email ou mot de passe incorrect."); }
     setLoading(false);
   };
@@ -472,7 +472,7 @@ function Cliente({ user, onLogout }) {
 
   const uploadToCloudinaryClient=async(file,folder)=>{
     const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);
-    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{method:"POST",body:fd});
+    const isPDF=file?.type==="application/pdf";const endpoint=isPDF?"raw":"image";const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}
     const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");
     return{url:data.secure_url,name:file.name,type:file.type};
@@ -507,7 +507,7 @@ function Cliente({ user, onLogout }) {
       <div style={headerStyle}>
         <div style={{maxWidth:600,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <p style={{fontFamily:P.serif,fontSize:20,color:P.cText,fontWeight:300,letterSpacing:"0.5px"}}>Bonjour <em style={{fontStyle:"italic",color:P.cGreen}}>{user.prénom}{user.nom?" "+user.nom:""}</em></p>
+            <p style={{fontFamily:P.serif,fontSize:20,color:P.cText,fontWeight:300,letterSpacing:"0.5px"}}>Bonjour <em style={{fontStyle:"italic",color:P.cGreen}}>{user.prénom}</em></p>
             <p style={{fontSize:11,color:P.cTextDim,letterSpacing:"1px",textTransform:"uppercase",marginTop:1}}>meije.naturo</p>
           </div>
           <button onClick={onLogout} style={{background:"none",border:"none",fontFamily:P.sans,fontSize:12,color:P.cTextDim,cursor:"pointer"}}>Déconnexion</button>
@@ -665,7 +665,7 @@ function Cliente({ user, onLogout }) {
           <div style={{background:P.cSurface,borderRadius:16,border:`0.5px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="card-raised">
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
               <div style={{width:48,height:48,borderRadius:"50%",background:P.cGreenDim,border:`1.5px solid ${P.cGreenBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:20,color:P.cGreen}}>{user.prénom?.[0]?.toUpperCase()||"?"}</div>
-              <div><p style={{color:P.cText,fontSize:16,fontFamily:P.serif,fontWeight:400}}>{user.prénom}{user.nom?" "+user.nom:""}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{user.email}</p></div>
+              <div><p style={{color:P.cText,fontSize:16,fontFamily:P.serif,fontWeight:400}}>{user.prénom}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{user.email}</p></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
               {[["Semaines",entries.length],["Protocoles",protocoles.length],["Documents",documents.length]].map(([l,v])=><div key={l} style={{background:P.cSurface2,borderRadius:10,padding:"10px 12px",textAlign:"center"}}><p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300}}>{v}</p><p style={{color:P.cTextDim,fontSize:10,marginTop:2}}>{l}</p></div>)}
@@ -742,8 +742,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
   documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
   anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
 
-  // Pas de blocage si bilans inaccessibles — IA génère depuis anamnèse
-  if (false && bilans.length === 0) {
+  if (bilans.length === 0) {
     setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace.");
     setIaLoading(false); return;
   }
@@ -823,9 +822,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       }),
     });
     const d1 = await r1.json();
-    console.log("REPONSE BRUTE IA:", JSON.stringify(d1));
     const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
-    console.log("PROTOCOLE CLIENTE:", protocoleCliente);
 
     setIaStep("Génération du protocole praticienne…");
     const r2 = await fetch("/api/claude", {
@@ -843,7 +840,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     const d2 = await r2.json();
     const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
 
-    if (protocoleCliente) setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
+    setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
     if (protocolePraticienne) {
       await setDoc(doc(db, "notes_privees", `proto_ia_${selected.uid}`), {
@@ -872,9 +869,7 @@ function Praticienne({ user, onLogout }) {
   const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
   const [activeTab,setActiveTab]=useState("infos");const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
-  const [showNotifPanel,setShowNotifPanel]=useState(false);
-  const [seenIds,setSeenIds]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("notif_seen_ids")||"[]"));}catch{return new Set();}});
-  const markAllSeen=()=>{const ids=recentActivity.map(a=>a.id);localStorage.setItem("notif_seen_ids",JSON.stringify(ids));setSeenIds(new Set(ids));};
+  const [showNotifPanel,setShowNotifPanel]=useState(false);const [seenCount,setSeenCount]=useState(0);
   const [newProtocole,setNewProtocole]=useState({titre:"",contenu:""});
   const [sendingProtocole,setSendingProtocole]=useState(false);
   const [newComplement,setNewComplement]=useState({nom:"",lien:"",posologie:"",codePromo:""});
@@ -934,7 +929,7 @@ function Praticienne({ user, onLogout }) {
     const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q4=query(collection(db,"protocoles"),where("toUid","==",c.uid),orderBy("date","asc"));
-    const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>prev.contenu&&prev.contenu!==getDefaultMessage(c.prenom)?{...prev,titre:getDefaultTitre(c.prenom,p.length)}:{titre:getDefaultTitre(c.prenom,p.length),contenu:getDefaultMessage(c.prenom)});});
+    const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>({...prev,titre:getDefaultTitre(c.prenom,p.length)}));});
     const q5=query(collection(db,"documents"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setDocuments(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     let u6=()=>{};
@@ -967,7 +962,7 @@ function Praticienne({ user, onLogout }) {
   const addComplement=async()=>{if(!newComplement.nom.trim())return;setSavingComplements(true);const current=clientData?.complements||[];const item={nom:newComplement.nom.trim(),lien:newComplement.lien.trim(),posologie:newComplement.posologie?.trim()||"",codePromo:newComplement.codePromo?.trim()||""};await updateDoc(doc(db,"users",selected.uid),{complements:[...current,item]});setNewComplement({nom:"",lien:"",posologie:"",codePromo:""});setSavingComplements(false);showToast("Complément ajouté ✓");};
   const removeComplement=async(idx)=>{const current=clientData?.complements||[];await updateDoc(doc(db,"users",selected.uid),{complements:current.filter((_,i)=>i!==idx)});};
   const updateComplement=async(idx,updated)=>{const current=clientData?.complements||[];await updateDoc(doc(db,"users",selected.uid),{complements:current.map((c,i)=>i===idx?updated:c)});setEditingComplement(null);showToast("Complément mis à jour ✓");};
-  const uploadToCloudinary=async(file,folder)=>{const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{method:"POST",body:fd});if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");return{url:data.secure_url,name:file.name,type:file.type};};
+  const uploadToCloudinary=async(file,folder)=>{const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);const isPDF=file.type==="application/pdf";const endpoint=isPDF?"raw":"image";const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");return{url:data.secure_url,name:file.name,type:file.type};};
   const uploadProtocoleFiles=async(files)=>{setUploadingProtocole(true);const uploaded=[];for(const file of files){try{const r=await uploadToCloudinary(file,"meije-naturo/protocoles");uploaded.push(r);}catch(e){showToast("Erreur : "+e.message);}}setProtocoleFiles(prev=>[...prev,...uploaded]);setUploadingProtocole(false);};
   const uploadAnamnesePDF=async(files)=>{setUploadingAnamnese(true);const uploaded=[];for(const file of files){try{const r=await uploadToCloudinary(file,"meije-naturo/anamneses");uploaded.push(r);}catch(e){showToast("Erreur : "+e.message);}}setUploadedAnamnese(prev=>[...prev,...uploaded]);setUploadingAnamnese(false);};
   const saveAnamnesePDF=async()=>{if(!uploadedAnamnese.length)return;setSavingAnamnese(true);await addDoc(collection(db,"anamneses"),{userUid:selected.uid,userEmail:selected.email,userPrenom:selected.prenom,date:new Date().toISOString(),saisieParPraticienne:true,bilans:uploadedAnamnese});setUploadedAnamnese([]);setSavingAnamnese(false);setAnamneseMode("view");showToast("Document enregistré ✓");};
@@ -993,8 +988,8 @@ function Praticienne({ user, onLogout }) {
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{markAllSeen();setShowNotifPanel(p=>!p);}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-                🔔{recentActivity.filter(a=>!seenIds.has(a.id)).length>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.filter(a=>!seenIds.has(a.id)).length}</span>}
+              <button onClick={()=>{setSeenCount(recentActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                🔔{recentActivity.length>seenCount&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.length-seenCount}</span>}
               </button>
               {showNotifPanel&&(
                 <div style={{position:"absolute",top:44,right:0,width:280,background:"#2A1E14",border:`1px solid ${P.pBorder}`,borderRadius:16,padding:16,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
@@ -1047,7 +1042,7 @@ function Praticienne({ user, onLogout }) {
               <button key={c.uid} onClick={()=>select(c)} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 18px",textAlign:"left",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all 0.15s"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14}}>
                   <div style={{width:42,height:42,borderRadius:"50%",background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:18,color:P.pAccent,flexShrink:0}}>{(c.prenom||"?")[0].toUpperCase()}</div>
-                  <div><p style={{color:P.pText,fontWeight:500,fontSize:15}}>{c.prenom}{c.nom?" "+c.nom:""}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{c.email}</p></div>
+                  <div><p style={{color:P.pText,fontWeight:500,fontSize:15}}>{c.prenom}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{c.email}</p></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   {(()=>{const s=c.statut||"en cours";const cols={"en cours":P.pGreen,"en pause":"#B8A05A","terminé":P.pTextDim};return<span style={{fontSize:10,color:cols[s],background:cols[s]+"18",border:`0.5px solid ${cols[s]}44`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{s}</span>;})()}
@@ -1174,7 +1169,7 @@ function Praticienne({ user, onLogout }) {
           <div style={{background:P.pSurface,borderRadius:14,border:`1px solid ${P.pBorder}`,padding:"18px 20px",marginBottom:18,display:"flex",alignItems:"center",gap:16}}>
             <div style={{width:52,height:52,borderRadius:"50%",background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:22,color:P.pAccent,flexShrink:0}}>{(selected.prenom||"?")[0].toUpperCase()}</div>
             <div style={{flex:1}}>
-              <p style={{fontFamily:P.serif,fontSize:20,color:P.pText,fontWeight:400}}>{selected.prenom}{selected.nom?" "+selected.nom:""}</p>
+              <p style={{fontFamily:P.serif,fontSize:20,color:P.pText,fontWeight:400}}>{selected.prenom}</p>
               <p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{selected.email}</p>
               <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8,alignItems:"center"}}>
                 <Chip label={`${entries.length} suivi${entries.length>1?"s":""}`} color={P.pGreen}/>
@@ -1519,7 +1514,7 @@ export default function App() {
   useEffect(()=>{
     setPersistence(auth,browserLocalPersistence).catch(console.error);
     const u=onAuthStateChanged(auth,async fw=>{
-      if(fw){const d=await getDoc(doc(db,"users",fw.uid));setUser({uid:fw.uid,email:fw.email,prénom:d.data()?.prénom||d.data()?.prenom||"",nom:d.data()?.nom||"",role:fw.email===PRATICIENNE_EMAIL?"praticienne":"cliente"});setShowLanding(false);}
+      if(fw){const d=await getDoc(doc(db,"users",fw.uid));setUser({uid:fw.uid,email:fw.email,prénom:d.data()?.prénom||"",role:fw.email===PRATICIENNE_EMAIL?"praticienne":"cliente"});setShowLanding(false);}
       else setUser(null);
       setChecking(false);
     });
