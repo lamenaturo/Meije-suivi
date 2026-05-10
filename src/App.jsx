@@ -742,7 +742,8 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
   documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
   anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
 
-  if (bilans.length === 0) {
+  // Pas de blocage si bilans inaccessibles — IA génère depuis anamnèse
+  if (false && bilans.length === 0) {
     setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace.");
     setIaLoading(false); return;
   }
@@ -842,7 +843,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     const d2 = await r2.json();
     const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
 
-    setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
+    if (protocoleCliente) setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
     if (protocolePraticienne) {
       await setDoc(doc(db, "notes_privees", `proto_ia_${selected.uid}`), {
