@@ -822,7 +822,9 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       }),
     });
     const d1 = await r1.json();
+    console.log("REPONSE BRUTE IA:", JSON.stringify(d1));
     const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
+    console.log("PROTOCOLE CLIENTE:", protocoleCliente);
 
     setIaStep("Génération du protocole praticienne…");
     const r2 = await fetch("/api/claude", {
