@@ -308,7 +308,7 @@ export default function Anamnese({ user, onDone, readonly, existingData }) {
   const submit = async () => {
     setSaving(true);
     const docData = {
-      userUid: user.uid, userEmail: user.email, userPrenom: user.prenom,
+      userUid: user.uid, userEmail: user.email, userPrenom: user.prénom || user.prenom || "",
       date: new Date().toISOString(), form, thyroideScore, thyroideInterpretation,
       bilans: uploadedFiles,
     };
