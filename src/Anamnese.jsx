@@ -257,7 +257,7 @@ export default function Anamnese({ user, onDone, readonly, existingData }) {
       fd.append("upload_preset", UPLOAD_PRESET);
       fd.append("folder", "meije-naturo/bilans");
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
+        const isPDF = file.type === "application/pdf"; const endpoint = isPDF ? "raw" : "image"; const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`, { method: "POST", body: fd });
         const data = await res.json();
         if (data.secure_url) uploaded.push({ url: data.secure_url, name: file.name, type: file.type });
         else console.error("Upload error:", data.error);
