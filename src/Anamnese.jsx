@@ -313,7 +313,13 @@ export default function Anamnese({ user, onDone, readonly, existingData }) {
       bilans: uploadedFiles,
     };
     const pdfText = await generatePDF({ ...docData, date: new Date().toISOString() });
-    await addDoc(collection(db, "anamneses"), { ...docData, pdfText });
+    const existingId = existingData?.id;
+    if (existingId) {
+      const { doc: docRef, setDoc } = await import("firebase/firestore");
+      await setDoc(docRef(db, "anamneses", existingId), { ...docData, pdfText }, { merge: true });
+    } else {
+      await addDoc(collection(db, "anamneses"), { ...docData, pdfText });
+    }
     setSaved(true); setSaving(false);
     try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STEP_KEY); } catch {}
     setTimeout(() => onDone(), 2500);
