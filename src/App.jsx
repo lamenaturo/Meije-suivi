@@ -931,7 +931,7 @@ function Praticienne({ user, onLogout }) {
     const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q4=query(collection(db,"protocoles"),where("toUid","==",c.uid),orderBy("date","asc"));
-    const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>({...prev,titre:getDefaultTitre(c.prenom,p.length)}));});
+    const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>prev.contenu&&prev.contenu!==getDefaultMessage(c.prenom)?{...prev,titre:getDefaultTitre(c.prenom,p.length)}:{titre:getDefaultTitre(c.prenom,p.length),contenu:getDefaultMessage(c.prenom)});});
     const q5=query(collection(db,"documents"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setDocuments(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     let u6=()=>{};
