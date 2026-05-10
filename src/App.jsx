@@ -123,6 +123,8 @@ const GLOBAL_CSS = `
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   @media (max-width: 768px) { .prat-grid { grid-template-columns: 1fr !important; } }
   @media (min-width: 1024px) { .page-inner { max-width: 720px !important; } .prat-inner { max-width: 900px !important; } }
+  .card-raised-dark { box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25) !important; transition: box-shadow 0.2s, transform 0.2s !important; }
+  .card-raised-dark:hover { box-shadow: 0 1px 0 rgba(255,255,255,0.07), 0 8px 20px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3) !important; transform: translateY(-1px); }
   .card-raised { box-shadow: 0 2px 8px rgba(44,28,16,0.08), 0 1px 2px rgba(44,28,16,0.05), inset 0 1px 0 rgba(255,255,255,0.7) !important; }
   .card-elevated { box-shadow: 0 6px 20px rgba(44,28,16,0.12), 0 2px 6px rgba(44,28,16,0.07), inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(44,28,16,0.03) !important; }
   .card-raised-dark { box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,245,235,0.06) !important; }
@@ -424,7 +426,7 @@ function BottomNav({ items, active, onChange, theme }) {
         const isActive=active===key;
         return (
           <button key={key} onClick={()=>onChange(key)} style={{ flex:1, border:"none", background:isActive&&theme==="p"?"rgba(200,133,108,0.08)":"none", padding:"12px 4px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, color:isActive?activeColor:inactiveColor, fontFamily:P.sans, fontSize:10, fontWeight:isActive?600:400, letterSpacing:isActive?"0.5px":"0", transition:"all 0.2s", position:"relative", borderRadius:"12px 12px 0 0" }}>
-            <span style={{ fontSize:22, lineHeight:1, position:"relative", filter:isActive?"drop-shadow(0 0 6px rgba(200,133,108,0.5))":"none", transition:"filter 0.2s" }}>
+            <span style={{ fontSize:24, lineHeight:1, position:"relative", filter:isActive&&theme==="p"?"drop-shadow(0 0 8px rgba(200,133,108,0.6))":isActive?"drop-shadow(0 0 6px rgba(74,122,90,0.5))":"none", transition:"filter 0.2s" }}>
               {icon}
               {badge>0&&<span style={{ position:"absolute", top:-2, right:-4, width:8, height:8, background:activeColor, borderRadius:"50%", display:"block" }}/>}
             </span>
@@ -958,7 +960,7 @@ function Praticienne({ user, onLogout }) {
   const [documents,setDocuments]=useState([]);const [newMsg,setNewMsg]=useState("");
   const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
-  const [activeTab,setActiveTab]=useState("infos");const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
+  const [activeTab,setActiveTab]=useState(null);const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
   const [showNotifPanel,setShowNotifPanel]=useState(false);const [seenCount,setSeenCount]=useState(0);
   const [newProtocole,setNewProtocole]=useState({titre:"",contenu:""});
   const [sendingProtocole,setSendingProtocole]=useState(false);
@@ -1007,7 +1009,7 @@ function Praticienne({ user, onLogout }) {
 
   const select=useCallback(c=>{
     if(window._clientUnsubs)window._clientUnsubs.forEach(fn=>fn());
-    setSelected(c);setNewMsg("");setActiveTab("infos");setAnamneseMode("view");setIaError("");setIaStep("");
+    setSelected(c);setNewMsg("");setActiveTab(null);setAnamneseMode("view");setIaError("");setIaStep("");
     setClientData(null);setEntries([]);setMessages([]);setAnamneses([]);setProtocoles([]);setDocuments([]);setNoteHistory([]);
     setNewProtocole({titre:getDefaultTitre(c.prenom,0),contenu:getDefaultMessage(c.prenom)});
     const userRef=doc(db,"users",c.uid);
@@ -1282,7 +1284,7 @@ function Praticienne({ user, onLogout }) {
               const isActive=activeTab===key||
                 (key==="documents"&&["anamnese","protocole","complements"].includes(activeTab));
               return(
-                <button key={key} onClick={()=>setActiveTab(key)} style={{
+                <button key={key} onClick={()=>setActiveTab(activeTab===key?null:key)} style={{
                   background:isActive?"linear-gradient(160deg,rgba(200,133,108,0.2),rgba(200,133,108,0.08))":P.pSurface,
                   border:`1px solid ${isActive?"rgba(200,133,108,0.4)":P.pBorder}`,
                   borderRadius:18,padding:"18px 8px",display:"flex",flexDirection:"column",
@@ -1300,7 +1302,7 @@ function Praticienne({ user, onLogout }) {
           {activeTab==="documents"&&(
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               {[{key:"anamnese",icon:"📋",label:"Anamnèse"},{key:"protocole",icon:"🌿",label:"Protocole"},{key:"complements",icon:"💊",label:"Compléments"}].map(({key,icon,label})=>(
-                <button key={key} onClick={()=>setActiveTab(key)} style={{padding:"8px 16px",borderRadius:20,border:`1px solid ${P.pBorder}`,background:P.pSurface,color:P.pTextMid,fontFamily:P.sans,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all 0.2s",boxShadow:P.shadowRaised}}>
+                <button key={key} onClick={()=>setActiveTab(activeTab===key?null:key)} style={{padding:"8px 16px",borderRadius:20,border:`1px solid ${P.pBorder}`,background:P.pSurface,color:P.pTextMid,fontFamily:P.sans,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all 0.2s",boxShadow:P.shadowRaised}}>
                   <span>{icon}</span>{label}
                 </button>
               ))}
