@@ -3,7 +3,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 const CLOUD_NAME = "di45b4ymc";
-const UPLOAD_PRESET = "meije_naturo";
+const UPLOAD_PRESET = "meije_naturo_public";
 
 // ─── PALETTE AUTOMNE DOUX — cohérente avec l'espace cliente ──────────────────
 const C = {
