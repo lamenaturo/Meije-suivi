@@ -1180,20 +1180,55 @@ function Praticienne({ user, onLogout }) {
             </div>
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8,marginBottom:18}}>
-            {[{key:"suivi",label:"Suivis",val:entries.length,unit:`semaine${entries.length>1?"s":""}`,col:P.pGreen,icon:"📝"},{key:"protocole",label:"Protocoles",val:protocoles.length,unit:`envoyé${protocoles.length>1?"s":""}`,col:P.pAccent,icon:"🌿"},{key:"complements",label:"Compléments",val:clientData?.complements?.length||0,unit:`prescrit${(clientData?.complements?.length||0)>1?"s":""}`,col:P.pGreen,icon:"💊"},{key:"anamnese",label:"Questionnaire",val:anamneses.length>0?"✓":"–",unit:anamneses.length>0?"rempli":"en attente",col:anamneses.length>0?P.pGreen:P.pTextDim,icon:"📋"},{key:"documents",label:"Documents",val:documents.length,unit:`fichier${documents.length>1?"s":""}`,col:P.pGreen,icon:"📁"},{key:"message",label:"Messages",val:messages.length,unit:`envoyé${messages.length>1?"s":""}`,col:P.pAccent,icon:"💬"}].map(({key,label,val,unit,col,icon})=>(
-              <button key={key} onClick={()=>setActiveTab(key)} style={{background:P.pSurface,borderRadius:12,border:`0.5px solid ${P.pBorder}`,padding:"12px 14px",textAlign:"left",cursor:"pointer"}} className="card-raised-dark">
-                <p style={{fontSize:16,marginBottom:6}}>{icon}</p>
-                <p style={{fontFamily:P.serif,fontSize:22,color:col,fontWeight:300,lineHeight:1}}>{val}</p>
-                <p style={{color:P.pTextDim,fontSize:10,marginTop:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>{unit}</p>
-                <p style={{color:P.pTextMid,fontSize:11,marginTop:2}}>{label}</p>
-              </button>
-            ))}
+          {/* ── DOSSIERS ── */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {key:"infos",icon:"👤",label:"Infos"},
+              {key:"documents",icon:"📁",label:"Documents"},
+              {key:"suivis",icon:"📊",label:"Suivis"},
+              {key:"message",icon:"💬",label:"Messages"},
+              {key:"notes",icon:"🔒",label:"Notes"},
+            ].map(({key,icon,label})=>{
+              const isActive=activeTab===key||
+                (key==="documents"&&["anamnese","protocole","complements"].includes(activeTab));
+              return(
+                <button key={key} onClick={()=>setActiveTab(key)} style={{
+                  background:isActive?"linear-gradient(135deg,rgba(200,133,108,0.18),rgba(200,133,108,0.06))":P.pSurface,
+                  border:`1px solid ${isActive?P.pAccentBorder:P.pBorder}`,
+                  borderRadius:16,padding:"16px 8px",display:"flex",flexDirection:"column",
+                  alignItems:"center",gap:8,cursor:"pointer",transition:"all 0.2s",
+                  boxShadow:isActive?"0 4px 16px rgba(200,133,108,0.15)":"none"
+                }} className="card-raised-dark">
+                  <span style={{fontSize:24}}>{icon}</span>
+                  <p style={{color:isActive?P.pAccent:P.pTextMid,fontSize:11,fontWeight:isActive?600:400,letterSpacing:"0.3px"}}>{label}</p>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginTop:16,marginBottom:20,paddingTop:4}}>
-            {TABS_CLIENT.map(({key,label})=>(
-              <button key={key} onClick={()=>setActiveTab(key)} style={{flexShrink:0,padding:"8px 14px",borderRadius:20,border:`1px solid ${activeTab===key?P.pAccentBorder:P.pBorder}`,background:activeTab===key?P.pAccentDim:"transparent",color:activeTab===key?P.pAccent:P.pTextDim,fontFamily:P.sans,fontSize:12,fontWeight:activeTab===key?500:400,whiteSpace:"nowrap",transition:"all 0.2s"}}>{label}</button>
+          {/* ── SOUS-DOSSIERS DOCUMENTS ── */}
+          {activeTab==="documents"&&(
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              {[{key:"anamnese",icon:"📋",label:"Anamnèse"},{key:"protocole",icon:"🌿",label:"Protocole"},{key:"complements",icon:"💊",label:"Compléments"}].map(({key,icon,label})=>(
+                <button key={key} onClick={()=>setActiveTab(key)} style={{padding:"8px 16px",borderRadius:20,border:`1px solid ${P.pBorder}`,background:P.pSurface,color:P.pTextMid,fontFamily:P.sans,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all 0.2s"}}>
+                  <span>{icon}</span>{label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── STATS MINI ── */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20,padding:"10px 14px",background:P.pSurface,borderRadius:12,border:`0.5px solid ${P.pBorder}`}}>
+            {[
+              anamneses.length>0&&{label:"Questionnaire rempli",col:P.pGreen,dot:"✓"},
+              protocoles.length>0&&{label:`${protocoles.length} protocole${protocoles.length>1?"s":""} envoyé${protocoles.length>1?"s":""}`,col:P.pAccent,dot:"🌿"},
+              messages.filter(m=>!m.read&&m.from!=="praticienne").length>0&&{label:`${messages.filter(m=>!m.read&&m.from!=="praticienne").length} message${messages.filter(m=>!m.read&&m.from!=="praticienne").length>1?"s":""} non lu${messages.filter(m=>!m.read&&m.from!=="praticienne").length>1?"s":""}`,col:"#E8A040",dot:"💬"},
+              {label:`${entries.length} semaine${entries.length>1?"s":""} de suivi`,col:P.pTextDim,dot:"📝"},
+            ].filter(Boolean).map((s,i)=>(
+              <span key={i} style={{fontSize:11,color:s.col,display:"flex",alignItems:"center",gap:4}}>
+                <span>{s.dot}</span>{s.label}
+                {i<3&&<span style={{color:P.pBorder,marginLeft:4}}>·</span>}
+              </span>
             ))}
           </div>
 
@@ -1263,7 +1298,7 @@ function Praticienne({ user, onLogout }) {
           )}
 
           {/* ── TAB SUIVIS ── */}
-          {activeTab==="suivi"&&(
+          {activeTab==="suivis"&&(
             <div>
               {entries.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli de suivi.`} theme="p"/>
                 :[...entries].reverse().map(e=>{
