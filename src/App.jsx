@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, browserLocalPersistence, setPersistence } from "firebase/auth";
-import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Anamnese from "./Anamnese";
 import { getSystemClient, getSystemPraticienne } from "./normes";
@@ -103,13 +103,14 @@ const P = {
   cAccent: "#8A5A2A", cGreen: "#4A7A5A", cGreenDim: "rgba(74,122,90,0.15)", cGreenBorder: "rgba(74,122,90,0.3)",
   cTerra: "#B5583A", cTerraDim: "rgba(181,88,58,0.12)",
   serif: "'Cormorant Garamond', Georgia, serif", sans: "'DM Sans', sans-serif",
-  // Neo-Tactile Soft UI shadows
   shadowRaised: "0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25)",
   shadowInner: "inset 0 2px 5px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
   shadowElevated: "0 0 0 1px rgba(200,133,108,0.2), 0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07)",
   shadowAccent: "0 4px 18px rgba(200,133,108,0.3), 0 1px 3px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
   shadowGlow: "0 0 20px rgba(200,133,108,0.2), 0 4px 12px rgba(0,0,0,0.3)",
 };
+
+const CHART_JS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
 
 const GLOBAL_CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -123,20 +124,15 @@ const GLOBAL_CSS = `
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   @media (max-width: 768px) { .prat-grid { grid-template-columns: 1fr !important; } }
   @media (min-width: 1024px) { .page-inner { max-width: 720px !important; } .prat-inner { max-width: 900px !important; } }
-  .card-raised-dark { box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25) !important; transition: box-shadow 0.2s, transform 0.2s !important; }
-  .card-raised-dark:hover { box-shadow: 0 1px 0 rgba(255,255,255,0.07), 0 8px 20px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3) !important; transform: translateY(-1px); }
   .card-raised { box-shadow: 0 2px 8px rgba(44,28,16,0.08), 0 1px 2px rgba(44,28,16,0.05), inset 0 1px 0 rgba(255,255,255,0.7) !important; }
   .card-elevated { box-shadow: 0 6px 20px rgba(44,28,16,0.12), 0 2px 6px rgba(44,28,16,0.07), inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(44,28,16,0.03) !important; }
-  .card-raised-dark { box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,245,235,0.06) !important; }
   .card-elevated-dark { box-shadow: 0 6px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,245,235,0.08) !important; }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 16px); }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-  .fade-in { animation: fadeIn 0.3s ease forwards; }
   .slide-up { animation: slideUp 0.35s ease forwards; }
 `;
 
@@ -327,89 +323,164 @@ function Auth({ onLogin, onBack }) {
   );
 }
 
-const PHASE_COLORS = { "Menstruelle":"#B5583A","Folliculaire":"#C8956C","Ovulation":"#4A8E6A","Lutéale":"#7A6A9A","Je ne sais pas":"#888" };
+// ─── GRAPHIQUES ───────────────────────────────────────────────────────────────
+// Charge Chart.js une seule fois
 
+let chartJsLoaded = false;
+function loadChartJs(cb) {
+  if (window.Chart) { cb(); return; }
+  if (chartJsLoaded) { const wait = setInterval(() => { if (window.Chart) { clearInterval(wait); cb(); } }, 50); return; }
+  chartJsLoaded = true;
+  const s = document.createElement("script");
+  s.src = CHART_JS_CDN;
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+const CHART_COLORS = {
+  sommeil:"#C8856C", energie:"#E8B89A", humeur:"#7A9E82",
+  anxiete:"#9E8A7A", douleurs:"#B5583A", digestion:"#6A9E7A",
+  alimentation:"#C4A882", peau:"#B8956A", poids:"#A89060",
+  _avg:"#C8856C",
+};
+
+function getScoreColor(v) {
+  if (v >= 4) return "#7A9E82";
+  if (v === 3) return "#B8A05A";
+  return "#B5583A";
+}
+
+// ─── EvolutionChart — nouveau design marron avec Chart.js ────────────────────
 function EvolutionChart({ entries, activeKeys, theme="c" }) {
-  const bg=theme==="c"?P.cSurface:P.pSurface, textColor=theme==="c"?P.cTextMid:P.pTextMid;
-  const dimColor=theme==="c"?P.cTextDim:P.pTextDim, borderColor=theme==="c"?P.cBorder:P.pBorder;
-  if (!entries||entries.length<2) return (
+  const canvasId = `evo-${Math.random().toString(36).slice(2,7)}`;
+  const [id] = useState(canvasId);
+  const chartRef = useCallback(node => {
+    if (!node) return;
+    loadChartJs(() => {
+      if (node._chartInstance) { node._chartInstance.destroy(); }
+      const isDark = theme === "p";
+      const gridColor = isDark ? "rgba(255,245,235,0.06)" : "rgba(44,28,16,0.08)";
+      const tickColor = isDark ? "rgba(255,245,235,0.3)" : "rgba(44,28,16,0.35)";
+      const tooltipBg = isDark ? "#2A1A10" : "#F5EDE2";
+      const tooltipText = isDark ? "rgba(255,245,235,0.9)" : "#1E1208";
+
+      const getAvg = e => {
+        const vs = TI.map(i => e.scores?.[i.key]).filter(Boolean);
+        return vs.length ? Math.round(vs.reduce((a,b) => a+b, 0) / vs.length * 10) / 10 : null;
+      };
+
+      const KEYS = activeKeys.length ? activeKeys : ["_avg"];
+      const datasets = KEYS.map((key, ki) => {
+        const color = CHART_COLORS[key] || "#C8856C";
+        const data = key === "_avg"
+          ? entries.map(e => getAvg(e))
+          : entries.map(e => e.scores?.[key] ?? null);
+        const isAvg = key === "_avg";
+        return {
+          label: isAvg ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key),
+          data,
+          borderColor: color,
+          backgroundColor: color + (isAvg ? "18" : "10"),
+          borderWidth: isAvg ? 2 : 1.5,
+          pointBackgroundColor: color,
+          pointRadius: isAvg ? 4 : 3.5,
+          pointHoverRadius: 6,
+          tension: 0.4,
+          fill: isAvg,
+          spanGaps: true,
+        };
+      });
+
+      const labels = entries.map(e => {
+        const d = new Date(e.date);
+        return `${d.getDate()}/${d.getMonth()+1}`;
+      });
+
+      node._chartInstance = new window.Chart(node, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: tooltipBg,
+              borderColor: "rgba(200,133,108,0.3)",
+              borderWidth: 1,
+              titleColor: tooltipText,
+              bodyColor: isDark ? "rgba(255,245,235,0.6)" : "rgba(44,28,16,0.6)",
+              callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y?.toFixed(1)}/5` },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor, lineWidth: 0.5 },
+              ticks: { font: { size: 10 }, color: tickColor, maxRotation: 0, autoSkip: entries.length > 8 },
+              border: { display: false },
+            },
+            y: {
+              min: 1, max: 5,
+              grid: { color: gridColor, lineWidth: 0.5 },
+              ticks: { stepSize: 1, font: { size: 10 }, color: tickColor },
+              border: { display: false },
+            },
+          },
+        },
+      });
+    });
+  }, [entries, activeKeys, theme]);
+
+  const borderColor = theme === "c" ? P.cBorder : P.pBorder;
+  const bg = theme === "c" ? P.cSurface : P.pSurface;
+  const dimColor = theme === "c" ? P.cTextDim : P.pTextDim;
+
+  if (!entries || entries.length < 2) return (
     <div style={{ background:bg, border:`1px solid ${borderColor}`, borderRadius:12, padding:"20px", textAlign:"center" }}>
       <p style={{ color:dimColor, fontSize:13 }}>Au moins 2 semaines de suivi sont nécessaires.</p>
     </div>
   );
-  const W=560,H=200,PAD={top:20,right:16,bottom:44,left:32},iW=W-PAD.left-PAD.right,iH=H-PAD.top-PAD.bottom,n=entries.length;
-  const xPos=i=>PAD.left+(n===1?iW/2:(i/(n-1))*iW);
-  const yPos=v=>PAD.top+iH-((v-1)/4)*iH;
-  const getAvg=e=>{const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;};
-  const getSeries=key=>key==="_avg"?entries.map(e=>getAvg(e)):entries.map(e=>e.scores?.[key]??null);
-  const CHART_KEYS=activeKeys.length?activeKeys:["_avg"];
-  const COLORS=["#C8856C","#4A8E6A","#7A6A9A","#B8A05A","#5A8ABE","#BE5A8A"];
-  const makePath=data=>{
-    const pts=data.map((v,i)=>v!==null?[xPos(i),yPos(v)]:null).filter(Boolean);
-    if(pts.length<2)return"";
-    let d=`M ${pts[0][0]} ${pts[0][1]}`;
-    for(let i=1;i<pts.length;i++){const[px,py]=pts[i-1],[cx,cy]=pts[i],cpx=(px+cx)/2;d+=` C ${cpx} ${py} ${cpx} ${cy} ${cx} ${cy}`;}
-    return d;
-  };
-  const shortDate=iso=>{const d=new Date(iso);return`${d.getDate()}/${d.getMonth()+1}`;};
+
+  const KEYS = activeKeys.length ? activeKeys : ["_avg"];
+
   return (
     <div style={{ background:bg, border:`1px solid ${borderColor}`, borderRadius:14, padding:"16px", overflow:"hidden" }}>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block", overflow:"visible" }}>
-        {[1,2,3,4,5].map(v=>(
-          <g key={v}>
-            <line x1={PAD.left} y1={yPos(v)} x2={W-PAD.right} y2={yPos(v)} stroke={theme==="c"?"rgba(44,28,16,0.08)":"rgba(255,245,235,0.07)"} strokeWidth={0.5}/>
-            <text x={PAD.left-6} y={yPos(v)+4} textAnchor="end" fontSize={9} fill={dimColor}>{v}</text>
-          </g>
-        ))}
-        {entries.map((e,i)=>{
-          if(!e.cyclePhase||e.cyclePhase==="Je ne sais pas")return null;
-          const x=xPos(i),nextX=i<n-1?xPos(i+1):W-PAD.right,col=PHASE_COLORS[e.cyclePhase]||"#888",segW=i<n-1?(nextX-x):20;
-          return <rect key={i} x={x-segW/2} y={PAD.top} width={segW} height={iH} fill={col} opacity={0.07} rx={2}/>;
-        })}
-        {CHART_KEYS.map((key,ki)=>{
-          const data=getSeries(key),color=COLORS[ki%COLORS.length],path=makePath(data);
+      <div style={{ position:"relative", width:"100%", height:200 }}>
+        <canvas ref={chartRef} />
+      </div>
+      {/* Légende */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginTop:10, paddingTop:10, borderTop:`1px solid ${borderColor}` }}>
+        {KEYS.map(key => {
+          const color = CHART_COLORS[key] || "#C8856C";
+          const label = key === "_avg" ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key);
           return (
-            <g key={key}>
-              {path&&<path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" opacity={0.9}/>}
-              {data.map((v,i)=>v!==null&&<circle key={i} cx={xPos(i)} cy={yPos(v)} r={3.5} fill={color} stroke={theme==="c"?P.cSurface:"#1C1410"} strokeWidth={1.5}/>)}
-            </g>
+            <div key={key} style={{ display:"flex", alignItems:"center", gap:5 }}>
+              <div style={{ width:10, height:10, borderRadius:"50%", background:color }} />
+              <span style={{ fontSize:10, color:dimColor }}>{label}</span>
+            </div>
           );
         })}
-        {entries.map((e,i)=>{
-          const x=xPos(i),phase=e.cyclePhase&&e.cyclePhase!=="Je ne sais pas"?e.cyclePhase:null;
-          const col=phase?PHASE_COLORS[phase]:dimColor,show=n<=8||i%2===0;
-          return show?(
-            <g key={i}>
-              <text x={x} y={H-PAD.bottom+14} textAnchor="middle" fontSize={9} fill={phase?col:dimColor} fontWeight={phase?"500":"400"}>{shortDate(e.date)}</text>
-              {phase&&<text x={x} y={H-PAD.bottom+26} textAnchor="middle" fontSize={8} fill={col} opacity={0.8}>{phase.slice(0,4)}.</text>}
-            </g>
-          ):null;
-        })}
-      </svg>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginTop:8, paddingTop:10, borderTop:`1px solid ${borderColor}` }}>
-        {Object.entries(PHASE_COLORS).filter(([k])=>k!=="Je ne sais pas").map(([phase,col])=>(
-          <div key={phase} style={{ display:"flex", alignItems:"center", gap:5 }}>
-            <div style={{ width:10, height:10, borderRadius:2, background:col, opacity:0.7 }}/>
-            <span style={{ fontSize:10, color:dimColor }}>{phase}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
 }
 
+// ─── ChartSelector — pills de sélection + graphique ─────────────────────────
 function ChartSelector({ entries, theme="c" }) {
   const allKeys=[{key:"_avg",label:"Moyenne globale",icon:"📊"},...TI.map(t=>({key:t.key,label:t.label,icon:t.icon}))];
   const [selected,setSelected]=useState(["_avg"]);
   const toggle=key=>setSelected(prev=>prev.includes(key)?(prev.length>1?prev.filter(k=>k!==key):prev):[...prev,key]);
-  const borderColor=theme==="c"?P.cBorder:P.pBorder,activeGreen=theme==="c"?P.cGreen:P.pGreen,activeDim=theme==="c"?P.cGreenDim:P.pGreenDim;
+  const borderColor=theme==="c"?P.cBorder:P.pBorder;
+  const activeBg=theme==="c"?P.cGreenDim:P.pAccentDim;
+  const activeColor=theme==="c"?P.cGreen:P.pAccent;
+  const activeEdge=theme==="c"?P.cGreenBorder:P.pAccentBorder;
   const hasData=key=>entries.some(e=>key==="_avg"?TI.some(t=>e.scores?.[t.key]):e.scores?.[key]);
   return (
     <div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
         {allKeys.filter(k=>hasData(k.key)).map(({key,label,icon})=>{
           const active=selected.includes(key);
-          return <button key={key} onClick={()=>toggle(key)} style={{ padding:"6px 12px", borderRadius:20, border:`1.5px solid ${active?activeGreen:borderColor}`, background:active?activeDim:"transparent", color:active?activeGreen:(theme==="c"?P.cTextMid:P.pTextMid), fontFamily:P.sans, fontSize:11, fontWeight:active?500:400, cursor:"pointer" }}>{icon} {label}</button>;
+          return <button key={key} onClick={()=>toggle(key)} style={{ padding:"6px 12px", borderRadius:20, border:`1.5px solid ${active?activeEdge:borderColor}`, background:active?activeBg:"transparent", color:active?activeColor:(theme==="c"?P.cTextMid:P.pTextMid), fontFamily:P.sans, fontSize:11, fontWeight:active?500:400, cursor:"pointer" }}>{icon} {label}</button>;
         })}
       </div>
       <EvolutionChart entries={entries} activeKeys={selected} theme={theme}/>
@@ -496,6 +567,13 @@ function Cliente({ user, onLogout }) {
     setUploadDocs(prev=>[...prev,...uploaded]);setUploadingDocs(false);
   };
 
+  // ── MODIFICATION 2 : Suppression d'un document Firestore côté cliente ──
+  const deleteDocument = async (docId) => {
+    if (!window.confirm("Supprimer ce document ?")) return;
+    await deleteDoc(doc(db, "documents", docId));
+    showToast("Document supprimé ✓");
+  };
+
   const submit=async()=>{
     await addDoc(collection(db,"entries"),{userUid:user.uid,userEmail:user.email,userPrénom:user.prénom,weekLabel:wk(),date:new Date().toISOString(),scores,notes,cyclePhase,cycleNote,complementsPris,humeur_libre:humeur,confidences,documents:uploadDocs});
     try{await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:user.prénom,action:"a rempli son suivi",to_email:PRATICIENNE_EMAIL});}catch{}
@@ -528,13 +606,10 @@ function Cliente({ user, onLogout }) {
 
       {view==="home"&&(
         <div style={inner} className="fade-in">
-          {/* Bonjour */}
           <div style={{marginBottom:24}}>
             <p style={{fontFamily:P.serif,fontSize:26,color:P.cText,fontWeight:300}}>Bonjour {user.prénom} 🌿</p>
             <p style={{color:P.cTextDim,fontSize:12,marginTop:4}}>Ton espace de suivi naturopathique</p>
           </div>
-
-          {/* Alertes actives */}
           {(()=>{
             const alerts=[];
             if(!hasAnamnese)alerts.push(<button key="qst" onClick={()=>setAnamneseView(true)} style={{width:"100%",background:P.cTerraDim,border:`1px solid rgba(181,88,58,0.25)`,borderRadius:14,padding:"14px 18px",marginBottom:10,textAlign:"left",cursor:"pointer"}}>
@@ -554,8 +629,6 @@ function Cliente({ user, onLogout }) {
             );
             return alerts.length>0?<div style={{marginBottom:8}}>{alerts}</div>:null;
           })()}
-
-          {/* Dossiers */}
           <p style={{color:P.cTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"2px",marginBottom:12}}>Mes dossiers</p>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:16}}>
             {[
@@ -568,14 +641,7 @@ function Cliente({ user, onLogout }) {
             ].map(({key,icon,label,badge})=>{
               const isOpen=clientFolder===key;
               return(
-                <button key={key} onClick={()=>setClientFolder(isOpen?null:key)} style={{
-                  background:isOpen?"linear-gradient(135deg,rgba(138,90,42,0.15),rgba(138,90,42,0.05))":P.cSurface,
-                  border:`1px solid ${isOpen?"rgba(138,90,42,0.35)":P.cBorder}`,
-                  borderRadius:18,padding:"20px 16px",display:"flex",flexDirection:"column",
-                  alignItems:"center",gap:10,cursor:"pointer",position:"relative",
-                  transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-                  boxShadow:isOpen?"0 4px 18px rgba(138,90,42,0.2), inset 0 1px 0 rgba(255,255,255,0.15)":"0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)"
-                }}>
+                <button key={key} onClick={()=>setClientFolder(isOpen?null:key)} style={{background:isOpen?"linear-gradient(135deg,rgba(138,90,42,0.15),rgba(138,90,42,0.05))":P.cSurface,border:`1px solid ${isOpen?"rgba(138,90,42,0.35)":P.cBorder}`,borderRadius:18,padding:"20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,cursor:"pointer",position:"relative",transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",boxShadow:isOpen?"0 4px 18px rgba(138,90,42,0.2), inset 0 1px 0 rgba(255,255,255,0.15)":"0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)"}}>
                   {badge&&<span style={{position:"absolute",top:10,right:10,width:8,height:8,borderRadius:"50%",background:P.cTerra}}/>}
                   <span style={{fontSize:28}}>{icon}</span>
                   <p style={{color:isOpen?P.cAccent:P.cTextMid,fontSize:12,fontWeight:isOpen?600:400,textAlign:"center",letterSpacing:"0.3px"}}>{label}</p>
@@ -584,59 +650,12 @@ function Cliente({ user, onLogout }) {
               );
             })}
           </div>
-
-          {/* Contenu du dossier ouvert */}
-          {clientFolder==="protocole"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              {protocoles.length===0?<p style={{color:P.cTextDim,fontSize:13,textAlign:"center"}}>Ton protocole arrive bientôt 🌿</p>
-                :protocoles.map((p,i)=>(
-                  <div key={i} style={{marginBottom:i<protocoles.length-1?20:0}}>
-                    <p style={{fontFamily:P.serif,fontSize:18,color:P.cText,marginBottom:8}}>{p.titre}</p>
-                    <p style={{color:P.cTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>
-                    {p.fichiers?.map((f,j)=><a key={j} href={f.url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:10,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 12px",color:P.cGreen,fontSize:12,textDecoration:"none"}}>📄 {f.name}</a>)}
-                  </div>
-                ))
-              }
-            </div>
-          )}
-
-          {clientFolder==="suivi"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              <Btn variant="cPrimary" onClick={()=>setView("suivi")} style={{width:"100%",marginBottom:12}}>Remplir mon suivi de la semaine →</Btn>
-              {entries.length>0&&<Btn variant="ghost" theme="c" onClick={()=>setView("historique")} style={{width:"100%"}}>Voir mon historique</Btn>}
-            </div>
-          )}
-
-          {clientFolder==="documents"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              <Btn variant="cPrimary" onClick={()=>setView("docs")} style={{width:"100%"}}>Gérer mes documents →</Btn>
-            </div>
-          )}
-
-          {clientFolder==="questionnaire"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              <Btn variant="cPrimary" onClick={()=>setAnamneseView(true)} style={{width:"100%"}}>{hasAnamnese?"Modifier mon questionnaire →":"Remplir mon questionnaire →"}</Btn>
-            </div>
-          )}
-
-          {clientFolder==="evolution"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              <Btn variant="cPrimary" onClick={()=>setView("evolution")} style={{width:"100%"}}>Voir mon évolution →</Btn>
-            </div>
-          )}
-
-          {clientFolder==="messages"&&(
-            <div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">
-              {messages.length===0?<p style={{color:P.cTextDim,fontSize:13,textAlign:"center"}}>Aucun message pour l'instant 🌿</p>
-                :messages.slice().reverse().slice(0,5).map(m=>(
-                  <div key={m.id} style={{background:P.cSurface2,borderRadius:12,padding:"12px 14px",marginBottom:8}}>
-                    <p style={{color:P.cText,fontSize:13,lineHeight:1.6}}>{m.text}</p>
-                    <p style={{color:P.cTextDim,fontSize:11,marginTop:4}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p>
-                  </div>
-                ))
-              }
-            </div>
-          )}
+          {clientFolder==="protocole"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">{protocoles.length===0?<p style={{color:P.cTextDim,fontSize:13,textAlign:"center"}}>Ton protocole arrive bientôt 🌿</p>:protocoles.map((p,i)=>(<div key={i} style={{marginBottom:i<protocoles.length-1?20:0}}><p style={{fontFamily:P.serif,fontSize:18,color:P.cText,marginBottom:8}}>{p.titre}</p><p style={{color:P.cTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>{p.fichiers?.map((f,j)=><a key={j} href={f.url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:10,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 12px",color:P.cGreen,fontSize:12,textDecoration:"none"}}>📄 {f.name}</a>)}</div>))}</div>)}
+          {clientFolder==="suivi"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in"><Btn variant="cPrimary" onClick={()=>setView("suivi")} style={{width:"100%",marginBottom:12}}>Remplir mon suivi de la semaine →</Btn>{entries.length>0&&<Btn variant="ghost" theme="c" onClick={()=>setView("historique")} style={{width:"100%"}}>Voir mon historique</Btn>}</div>)}
+          {clientFolder==="documents"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in"><Btn variant="cPrimary" onClick={()=>setView("docs")} style={{width:"100%"}}>Gérer mes documents →</Btn></div>)}
+          {clientFolder==="questionnaire"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in"><Btn variant="cPrimary" onClick={()=>setAnamneseView(true)} style={{width:"100%"}}>{hasAnamnese?"Modifier mon questionnaire →":"Remplir mon questionnaire →"}</Btn></div>)}
+          {clientFolder==="evolution"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in"><Btn variant="cPrimary" onClick={()=>setView("evolution")} style={{width:"100%"}}>Voir mon évolution →</Btn></div>)}
+          {clientFolder==="messages"&&(<div style={{background:P.cSurface,borderRadius:16,border:`1px solid ${P.cBorder}`,padding:"20px",marginBottom:16}} className="fade-in">{messages.length===0?<p style={{color:P.cTextDim,fontSize:13,textAlign:"center"}}>Aucun message pour l'instant 🌿</p>:messages.slice().reverse().slice(0,5).map(m=>(<div key={m.id} style={{background:P.cSurface2,borderRadius:12,padding:"12px 14px",marginBottom:8}}><p style={{color:P.cText,fontSize:13,lineHeight:1.6}}>{m.text}</p><p style={{color:P.cTextDim,fontSize:11,marginTop:4}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p></div>))}</div>)}
         </div>
       )}
 
@@ -649,22 +668,7 @@ function Cliente({ user, onLogout }) {
             <Section title="Tes compléments cette semaine" theme="c">
               {complements.map((c,i)=>{
                 const nom=typeof c==="string"?c:c.nom,lien=typeof c==="string"?"":c.lien,posologie=typeof c==="string"?"":c.posologie,codePromo=typeof c==="string"?"":c.codePromo;
-                return(
-                  <div key={i} style={{marginBottom:14,background:P.cSurface,border:`1px solid ${P.cBorder}`,borderRadius:12,padding:"12px 14px"}}>
-                    <p style={{color:P.cText,fontSize:14,fontWeight:500,marginBottom:posologie?4:8}}>{nom}</p>
-                    {posologie&&<p style={{color:P.cAccent,fontSize:12,marginBottom:8}}>💊 {posologie}</p>}
-                    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
-                      {lien&&<a href={lien} target="_blank" rel="noreferrer" style={{color:P.cGreen,fontSize:12,textDecoration:"none"}}>→ Commander</a>}
-                      {codePromo&&<span style={{background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:6,padding:"2px 8px",color:P.cGreen,fontSize:11,fontWeight:500}}>🏷 Code : {codePromo}</span>}
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {["Pris régulièrement","Pris irrégulièrement","Pas pris"].map(opt=>{
-                        const colors={"Pris régulièrement":"#4A8E6A","Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"},active=complementsPris[nom]===opt;
-                        return<button key={opt} onClick={()=>setComplementsPris(p=>({...p,[nom]:opt}))} style={{padding:"7px 12px",borderRadius:20,border:`1.5px solid ${active?colors[opt]:P.cBorder}`,background:active?colors[opt]+"18":"transparent",color:active?colors[opt]:P.cTextMid,fontSize:12,fontFamily:P.sans,fontWeight:active?500:400}}>{opt}</button>;
-                      })}
-                    </div>
-                  </div>
-                );
+                return(<div key={i} style={{marginBottom:14,background:P.cSurface,border:`1px solid ${P.cBorder}`,borderRadius:12,padding:"12px 14px"}}><p style={{color:P.cText,fontSize:14,fontWeight:500,marginBottom:posologie?4:8}}>{nom}</p>{posologie&&<p style={{color:P.cAccent,fontSize:12,marginBottom:8}}>💊 {posologie}</p>}<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{lien&&<a href={lien} target="_blank" rel="noreferrer" style={{color:P.cGreen,fontSize:12,textDecoration:"none"}}>→ Commander</a>}{codePromo&&<span style={{background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:6,padding:"2px 8px",color:P.cGreen,fontSize:11,fontWeight:500}}>🏷 Code : {codePromo}</span>}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["Pris régulièrement","Pris irrégulièrement","Pas pris"].map(opt=>{const colors={"Pris régulièrement":"#4A8E6A","Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"},active=complementsPris[nom]===opt;return<button key={opt} onClick={()=>setComplementsPris(p=>({...p,[nom]:opt}))} style={{padding:"7px 12px",borderRadius:20,border:`1.5px solid ${active?colors[opt]:P.cBorder}`,background:active?colors[opt]+"18":"transparent",color:active?colors[opt]:P.cTextMid,fontSize:12,fontFamily:P.sans,fontWeight:active?500:400}}>{opt}</button>;})}</div></div>);
               })}
             </Section>
           )}
@@ -679,18 +683,7 @@ function Cliente({ user, onLogout }) {
             const toutesLesPriorites=[...new Set([(userProfil.profils||[]).flatMap(key=>{const s=PROFILS.flatMap(g=>g.sousProfiles).find(s=>s.key===key);return s?.priorites||[];}),...(userProfil.axesManuel||[])].flat())].filter(k=>!axesExclus.includes(k));
             const prioritaires=toutesLesPriorites.length>0?TI.filter(t=>toutesLesPriorites.includes(t.key)):TI;
             const secondaires=toutesLesPriorites.length>0?TI.filter(t=>!toutesLesPriorites.includes(t.key)):[];
-            const renderQuestion=(item,isPrio)=>(
-              <div key={item.key} style={{marginBottom:20}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                  <p style={{color:P.cText,fontSize:14,fontWeight:500}}>{item.icon} {item.question}</p>
-                  {isPrio&&toutesLesPriorites.length>0&&<span style={{background:P.cGreenDim,border:`0.5px solid ${P.cGreenBorder}`,borderRadius:20,padding:"2px 8px",fontSize:9,color:P.cGreen,fontWeight:500,textTransform:"uppercase",letterSpacing:"1px"}}>Prioritaire</span>}
-                </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-                  {SC.map(s=>{const active=scores[item.key]===s.v;return<button key={s.v} onClick={()=>setScores(p=>({...p,[item.key]:s.v}))} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${active?s.color:P.cBorder}`,background:active?s.color+"18":"transparent",color:active?s.color:P.cTextMid,fontSize:13,fontFamily:P.sans,fontWeight:active?500:400}}>{s.v} · {s.label}</button>;})}
-                </div>
-                <textarea value={notes[item.key]||""} onChange={e=>setNotes(p=>({...p,[item.key]:e.target.value}))} placeholder={`Précisions sur ${item.label.toLowerCase()}…`} rows={2} style={{...iP("c"),resize:"vertical"}}/>
-              </div>
-            );
+            const renderQuestion=(item,isPrio)=>(<div key={item.key} style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><p style={{color:P.cText,fontSize:14,fontWeight:500}}>{item.icon} {item.question}</p>{isPrio&&toutesLesPriorites.length>0&&<span style={{background:P.cGreenDim,border:`0.5px solid ${P.cGreenBorder}`,borderRadius:20,padding:"2px 8px",fontSize:9,color:P.cGreen,fontWeight:500,textTransform:"uppercase",letterSpacing:"1px"}}>Prioritaire</span>}</div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{SC.map(s=>{const active=scores[item.key]===s.v;return<button key={s.v} onClick={()=>setScores(p=>({...p,[item.key]:s.v}))} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${active?s.color:P.cBorder}`,background:active?s.color+"18":"transparent",color:active?s.color:P.cTextMid,fontSize:13,fontFamily:P.sans,fontWeight:active?500:400}}>{s.v} · {s.label}</button>;})}</div><textarea value={notes[item.key]||""} onChange={e=>setNotes(p=>({...p,[item.key]:e.target.value}))} placeholder={`Précisions sur ${item.label.toLowerCase()}…`} rows={2} style={{...iP("c"),resize:"vertical"}}/></div>);
             return<>{prioritaires.map(item=>renderQuestion(item,true))}{secondaires.length>0&&<div style={{marginTop:8,marginBottom:16,borderTop:`1px solid ${P.cBorder}`,paddingTop:16}}><p style={{color:P.cTextDim,fontSize:11,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:14}}>Autres paramètres</p>{secondaires.map(item=>renderQuestion(item,false))}</div>}</>;
           })()}
           <Section title="Comment tu te sens globalement ?" theme="c">
@@ -707,17 +700,7 @@ function Cliente({ user, onLogout }) {
         <div style={inner} className="fade-in">
           <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:P.cTextMid,fontSize:13,fontFamily:P.sans,marginBottom:16,cursor:"pointer"}}>← Retour</button>
           <p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300,marginBottom:20}}>Mon protocole</p>
-          {protocoles.length===0?<EmptyState message="Ton protocole personnalisé apparaîtra ici après votre première consultation." theme="c"/>
-            :[...protocoles].reverse().map(p=>(
-              <div key={p.id} style={{background:P.cSurface,border:`1px solid ${P.cBorder}`,borderRadius:14,padding:"18px 20px",marginBottom:14}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                  <p style={{fontFamily:P.serif,fontSize:18,color:P.cText,fontWeight:400}}>{p.titre}</p>
-                  <span style={{color:P.cTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</span>
-                </div>
-                <p style={{color:P.cTextMid,fontSize:14,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>
-                {p.fichiers?.length>0&&<div style={{marginTop:14}}><p style={{color:P.cTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>Fichiers joints</p><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.name} style={{display:"inline-flex",alignItems:"center",gap:6,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"8px 14px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("pdf")?"📄":"🖼"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div></div>}
-              </div>
-            ))}
+          {protocoles.length===0?<EmptyState message="Ton protocole personnalisé apparaîtra ici après votre première consultation." theme="c"/>:[...protocoles].reverse().map(p=>(<div key={p.id} style={{background:P.cSurface,border:`1px solid ${P.cBorder}`,borderRadius:14,padding:"18px 20px",marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><p style={{fontFamily:P.serif,fontSize:18,color:P.cText,fontWeight:400}}>{p.titre}</p><span style={{color:P.cTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</span></div><p style={{color:P.cTextMid,fontSize:14,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>{p.fichiers?.length>0&&<div style={{marginTop:14}}><p style={{color:P.cTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>Fichiers joints</p><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.name} style={{display:"inline-flex",alignItems:"center",gap:6,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"8px 14px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("pdf")?"📄":"🖼"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div></div>}</div>))}
         </div>
       )}
 
@@ -735,6 +718,7 @@ function Cliente({ user, onLogout }) {
         </div>
       )}
 
+      {/* ── VUE DOCS — avec suppression ── */}
       {view==="docs"&&(
         <div style={inner} className="fade-in">
           <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:P.cTextMid,fontSize:13,fontFamily:P.sans,marginBottom:16,cursor:"pointer"}}>← Retour</button>
@@ -746,7 +730,23 @@ function Cliente({ user, onLogout }) {
             {uploadingDocs&&<p style={{color:P.cGreen,fontSize:13,marginTop:10}}>Upload en cours…</p>}
             {uploadDocs.length>0&&<div style={{marginTop:14}}>{uploadDocs.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"8px 12px",marginBottom:6}}><span style={{color:P.cGreen,fontSize:12}}>📎 {d.name}</span><button onClick={()=>setUploadDocs(prev=>prev.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:P.cTextMid,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button></div>)}<Btn variant="cPrimary" onClick={async()=>{await addDoc(collection(db,"documents"),{userUid:user.uid,userEmail:user.email,date:new Date().toISOString(),files:uploadDocs});try{await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:user.prénom,action:"a partagé des documents",to_email:PRATICIENNE_EMAIL});}catch{}setUploadDocs([]);showToast("Documents envoyés ✓");}} style={{marginTop:12,width:"100%"}}>Envoyer à Meije</Btn></div>}
           </div>
-          {documents.length>0&&<div style={{marginTop:8}}><p style={{color:P.cTextMid,fontSize:12,marginBottom:10}}>Bilans déjà envoyés :</p>{documents.map(d=><div key={d.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"12px 16px",marginBottom:8}}><p style={{color:P.cTextDim,fontSize:11,marginBottom:8}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{d.files?.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div></div>)}</div>}
+          {/* ── MODIFICATION 2 : liste docs avec bouton supprimer ── */}
+          {documents.length>0&&(
+            <div style={{marginTop:8}}>
+              <p style={{color:P.cTextMid,fontSize:12,marginBottom:10}}>Bilans déjà envoyés :</p>
+              {documents.map(d=>(
+                <div key={d.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"12px 16px",marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <p style={{color:P.cTextDim,fontSize:11}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p>
+                    <button onClick={()=>deleteDocument(d.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer",padding:"0 4px"}} title="Supprimer ce document">×</button>
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {d.files?.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -811,18 +811,6 @@ const PRAT_NAV = [
   { key:"clients", label:"Consultantes", icon:"👥" },
   { key:"messages", label:"Messages", icon:"💬" },
   { key:"profil", label:"Mon espace", icon:"🌿" },
-];
-
-const TABS_CLIENT = [
-  { key:"infos", label:"Infos" },
-  { key:"suivi", label:"Suivis" },
-  { key:"evolution", label:"Évolution" },
-  { key:"complements", label:"Compléments" },
-  { key:"protocole", label:"Protocole" },
-  { key:"anamnese", label:"Questionnaire" },
-  { key:"documents", label:"Documents" },
-  { key:"notes", label:"Notes privées" },
-  { key:"message", label:"Message" },
 ];
 
 // ─── FONCTION IA ──────────────────────────────────────────────────────────────
@@ -982,10 +970,12 @@ function Praticienne({ user, onLogout }) {
   const [savingProtoPrat,setSavingProtoPrat]=useState(false);
   const [savingNote,setSavingNote]=useState(false);
   const [noteHistory,setNoteHistory]=useState([]);
-  // ── États IA ──
   const [iaLoading,setIaLoading]=useState(false);
   const [iaStep,setIaStep]=useState("");
   const [iaError,setIaError]=useState("");
+
+  // ── MODIFICATION 3 : état pour les notifs lues ──
+  const [clearedActivity,setClearedActivity]=useState([]);
 
   const showToast=useCallback((msg)=>setToast(msg),[]);
   const getDefaultTitre=(prenom,nb)=>`Protocole n°${nb+1} — ${prenom}`;
@@ -1034,7 +1024,7 @@ function Praticienne({ user, onLogout }) {
 
   const saveProtoPrat=async()=>{if(!protoPrat.trim()||!selected)return;setSavingProtoPrat(true);await setDoc(doc(db,"notes_privees",`proto_${selected.uid}`),{clientUid:selected.uid,type:"protocole_praticienne",text:protoPrat.trim(),date:new Date().toISOString()});setSavingProtoPrat(false);showToast("Protocole praticienne enregistré ✓");};
   const saveNote=async()=>{if(!privateNotes.trim())return;setSavingNote(true);await addDoc(collection(db,"notes_privees"),{clientUid:selected.uid,clientPrenom:selected.prenom,text:privateNotes.trim(),date:new Date().toISOString()});setPrivateNotes("");setSavingNote(false);showToast("Note enregistrée ✓");};
-  const deleteNote=async(id)=>{const{deleteDoc,doc:fd}=await import("firebase/firestore");await deleteDoc(fd(db,"notes_privees",id));};
+  const deleteNote=async(id)=>{await deleteDoc(doc(db,"notes_privees",id));};
   const saveStatut=async(uid,statut)=>{await updateDoc(doc(db,"users",uid),{statut});};
   const createClient=async()=>{
     if(!newClientForm.prenom||!newClientForm.email||!newClientForm.password)return;
@@ -1060,7 +1050,11 @@ function Praticienne({ user, onLogout }) {
   const saveAnamnesePDF=async()=>{if(!uploadedAnamnese.length)return;setSavingAnamnese(true);await addDoc(collection(db,"anamneses"),{userUid:selected.uid,userEmail:selected.email,userPrenom:selected.prenom,date:new Date().toISOString(),saisieParPraticienne:true,bilans:uploadedAnamnese});setUploadedAnamnese([]);setSavingAnamnese(false);setAnamneseMode("view");showToast("Document enregistré ✓");};
   const sendProtocole=async()=>{if(!newProtocole.titre.trim())return;setSendingProtocole(true);await addDoc(collection(db,"protocoles"),{toUid:selected.uid,toEmail:selected.email,toPrenom:selected.prenom,titre:newProtocole.titre.trim(),contenu:newProtocole.contenu.trim(),fichiers:protocoleFiles,date:new Date().toISOString()});try{await sendEmail(EMAILJS_TEMPLATE,{prenom:selected.prenom,to_email:selected.email,titre:newProtocole.titre.trim()});}catch{}setNewProtocole({titre:"",contenu:""});setProtocoleFiles([]);setSendingProtocole(false);showToast("Protocole envoyé à "+selected.prenom+" ✓");};
   const sendMsg=async()=>{if(!newMsg.trim())return;setSending(true);await addDoc(collection(db,"messages"),{toUid:selected.uid,toEmail:selected.email,toPrenom:selected.prenom,text:newMsg.trim(),date:new Date().toISOString()});try{await sendEmail(EMAILJS_TEMPLATE,{prenom:selected.prenom,to_email:selected.email});}catch{}setNewMsg("");setSending(false);showToast("Message envoyé ✓");};
-  const deleteProtocole=async(id)=>{if(!window.confirm("Supprimer ce protocole ?"))return;const{deleteDoc,doc:fd}=await import("firebase/firestore");await deleteDoc(fd(db,"protocoles",id));showToast("Protocole supprimé");};
+  const deleteProtocole=async(id)=>{if(!window.confirm("Supprimer ce protocole ?"))return;await deleteDoc(doc(db,"protocoles",id));showToast("Protocole supprimé");};
+
+  // ── MODIFICATION 3 : nombre de notifs non lues (hors cleared) ──
+  const visibleActivity = recentActivity.filter(a => !clearedActivity.includes(a.id));
+  const unreadCount = visibleActivity.length > seenCount ? visibleActivity.length - seenCount : 0;
 
   if(loading)return<div style={{minHeight:"100vh",background:P.pBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:20,color:P.pTextDim,fontWeight:300}}>Chargement…</p></div>;
 
@@ -1079,23 +1073,41 @@ function Praticienne({ user, onLogout }) {
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
+            {/* ── MODIFICATION 3 : cloche avec bouton "Tout effacer" ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setSeenCount(recentActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-                🔔{recentActivity.length>seenCount&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{recentActivity.length-seenCount}</span>}
+              <button onClick={()=>{setSeenCount(visibleActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                🔔{unreadCount>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{unreadCount}</span>}
               </button>
               {showNotifPanel&&(
-                <div style={{position:"absolute",top:44,right:0,width:280,background:"#2A1E14",border:`1px solid ${P.pBorder}`,borderRadius:16,padding:16,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
-                  <p style={{fontFamily:P.serif,fontSize:15,color:P.pText,marginBottom:12}}>Activité récente</p>
-                  {recentActivity.length===0?<p style={{color:P.pTextDim,fontSize:13}}>Aucune activité 🌿</p>
-                    :recentActivity.slice(0,8).map((a,i)=>{
+                <div style={{position:"absolute",top:44,right:0,width:290,background:"#2A1E14",border:`1px solid ${P.pBorder}`,borderRadius:16,padding:16,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <p style={{fontFamily:P.serif,fontSize:15,color:P.pText}}>Activité récente</p>
+                    {visibleActivity.length>0&&(
+                      <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setSeenCount(0);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
+                        Tout effacer
+                      </button>
+                    )}
+                  </div>
+                  {visibleActivity.length===0
+                    ?<p style={{color:P.pTextDim,fontSize:13}}>Aucune activité 🌿</p>
+                    :visibleActivity.slice(0,8).map((a,i)=>{
                       const prenom=a.userPrénom||a.userPrenom||a.clientPrenom||"—";
                       const icons={suivi:"📝",anamnese:"📋",document:"📁"};
                       const labels={suivi:"a rempli son suivi",anamnese:"a envoyé son questionnaire",document:"a partagé des documents"};
                       const daysAgo=Math.floor((Date.now()-new Date(a.date).getTime())/(1000*60*60*24));
                       const timeLabel=daysAgo===0?"Aujourd'hui":daysAgo===1?"Hier":`Il y a ${daysAgo}j`;
                       const clientCible=clients.find(c=>c.uid===(a.userUid||a.clientUid));
-                      return<div key={i} onClick={()=>{if(clientCible){setSelected(clientCible);setMainView("fiche");setShowNotifPanel(false);}}} style={{padding:"8px 10px",borderRadius:10,marginBottom:6,background:"rgba(255,255,255,0.04)",cursor:clientCible?"pointer":"default",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><p style={{fontSize:12,color:"rgba(242,232,218,0.8)"}}>{icons[a.type]} <span style={{color:P.pAccent}}>{prenom}</span> {labels[a.type]}</p><p style={{fontSize:10,color:"rgba(242,232,218,0.3)",flexShrink:0}}>{timeLabel}</p></div>;
-                    })}
+                      return(
+                        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,marginBottom:6,background:"rgba(255,255,255,0.04)"}}>
+                          <div style={{flex:1,cursor:clientCible?"pointer":"default"}} onClick={()=>{if(clientCible){setSelected(clientCible);setMainView("fiche");setShowNotifPanel(false);}}}>
+                            <p style={{fontSize:12,color:"rgba(242,232,218,0.8)"}}>{icons[a.type]} <span style={{color:P.pAccent}}>{prenom}</span> {labels[a.type]}</p>
+                            <p style={{fontSize:10,color:"rgba(242,232,218,0.3)",marginTop:2}}>{timeLabel}</p>
+                          </div>
+                          <button onClick={()=>setClearedActivity(prev=>[...prev,a.id])} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
+                        </div>
+                      );
+                    })
+                  }
                 </div>
               )}
             </div>
@@ -1151,7 +1163,6 @@ function Praticienne({ user, onLogout }) {
       {/* ── MESSAGES GLOBAUX ── */}
       {mainView==="messages"&&(
         <div style={{...pInner,display:"flex",gap:16,height:"calc(100vh - 120px)",overflow:"hidden"}} className="fade-in">
-          {/* Liste conversations */}
           <div style={{width:260,flexShrink:0,overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
             <p style={{fontFamily:P.serif,fontSize:18,color:P.pText,fontWeight:300,marginBottom:8}}>Conversations</p>
             {clients.length===0?<EmptyState message="Aucune consultante." theme="p"/>
@@ -1174,21 +1185,14 @@ function Praticienne({ user, onLogout }) {
               })
             }
           </div>
-
-          {/* Fil de conversation */}
           <div style={{flex:1,display:"flex",flexDirection:"column",background:P.pSurface,borderRadius:16,border:`1px solid ${P.pBorder}`,overflow:"hidden"}}>
             {!msgConv
               ?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{color:P.pTextDim,fontSize:13}}>Sélectionne une conversation 🌿</p></div>
               :<>
-                {/* Header conversation */}
                 <div style={{padding:"14px 18px",borderBottom:`1px solid ${P.pBorder}`,display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:36,height:36,borderRadius:"50%",background:P.pAccentDim,display:"flex",alignItems:"center",justifyContent:"center",color:P.pAccent,fontWeight:600,fontSize:14}}>{msgConv.prenom?.[0]}</div>
-                  <div>
-                    <p style={{color:P.pText,fontSize:14,fontWeight:500}}>{msgConv.prenom} {msgConv.nom||""}</p>
-                    <p style={{color:P.pTextDim,fontSize:11}}>{msgConv.email}</p>
-                  </div>
+                  <div><p style={{color:P.pText,fontSize:14,fontWeight:500}}>{msgConv.prenom} {msgConv.nom||""}</p><p style={{color:P.pTextDim,fontSize:11}}>{msgConv.email}</p></div>
                 </div>
-                {/* Messages */}
                 <div style={{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
                   {convMessages.length===0?<p style={{color:P.pTextDim,fontSize:13,textAlign:"center",marginTop:20}}>Aucun message encore 🌿</p>
                     :convMessages.map(m=>{
@@ -1204,18 +1208,13 @@ function Praticienne({ user, onLogout }) {
                     })
                   }
                 </div>
-                {/* Zone saisie */}
                 <div style={{padding:"12px 18px",borderTop:`1px solid ${P.pBorder}`,display:"flex",gap:10,alignItems:"flex-end"}}>
                   <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();document.getElementById("send-msg-btn").click();}}} placeholder={`Écrire à ${msgConv.prenom}…`} rows={2} style={{flex:1,background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,resize:"none",outline:"none"}}/>
                   <button id="send-msg-btn" disabled={!msgText.trim()||sendingMsg} onClick={async()=>{
                     if(!msgText.trim())return;
                     setSendingMsg(true);
-                    await addDoc(collection(db,"messages"),{
-                      userUid:msgConv.uid,toPrenom:msgConv.prenom,toUid:msgConv.uid,
-                      text:msgText.trim(),date:new Date().toISOString(),from:"praticienne",read:false
-                    });
-                    setMsgText("");
-                    setSendingMsg(false);
+                    await addDoc(collection(db,"messages"),{userUid:msgConv.uid,toPrenom:msgConv.prenom,toUid:msgConv.uid,text:msgText.trim(),date:new Date().toISOString(),from:"praticienne",read:false});
+                    setMsgText("");setSendingMsg(false);
                   }} style={{background:P.pAccent,color:"#1C1410",border:"none",borderRadius:12,padding:"10px 16px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap",opacity:msgText.trim()?1:0.5}}>
                     {sendingMsg?"…":"Envoyer →"}
                   </button>
@@ -1272,7 +1271,6 @@ function Praticienne({ user, onLogout }) {
             </div>
           </div>
 
-          {/* ── DOSSIERS ── */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
             {[
               {key:"infos",icon:"👤",label:"Infos"},
@@ -1281,16 +1279,9 @@ function Praticienne({ user, onLogout }) {
               {key:"message",icon:"💬",label:"Messages"},
               {key:"notes",icon:"🔒",label:"Notes"},
             ].map(({key,icon,label})=>{
-              const isActive=activeTab===key||
-                (key==="documents"&&["anamnese","protocole","complements"].includes(activeTab));
+              const isActive=activeTab===key||(key==="documents"&&["anamnese","protocole","complements"].includes(activeTab));
               return(
-                <button key={key} onClick={()=>setActiveTab(activeTab===key?null:key)} style={{
-                  background:isActive?"linear-gradient(160deg,rgba(200,133,108,0.2),rgba(200,133,108,0.08))":P.pSurface,
-                  border:`1px solid ${isActive?"rgba(200,133,108,0.4)":P.pBorder}`,
-                  borderRadius:18,padding:"18px 8px",display:"flex",flexDirection:"column",
-                  alignItems:"center",gap:8,cursor:"pointer",transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-                  boxShadow:isActive?P.shadowAccent:P.shadowRaised
-                }} className="card-raised-dark">
+                <button key={key} onClick={()=>setActiveTab(activeTab===key?null:key)} style={{background:isActive?"linear-gradient(160deg,rgba(200,133,108,0.2),rgba(200,133,108,0.08))":P.pSurface,border:`1px solid ${isActive?"rgba(200,133,108,0.4)":P.pBorder}`,borderRadius:18,padding:"18px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:8,cursor:"pointer",transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",boxShadow:isActive?P.shadowAccent:P.shadowRaised}} className="card-raised-dark">
                   <span style={{fontSize:24}}>{icon}</span>
                   <p style={{color:isActive?P.pAccent:P.pTextMid,fontSize:11,fontWeight:isActive?600:400,letterSpacing:"0.3px"}}>{label}</p>
                 </button>
@@ -1298,7 +1289,6 @@ function Praticienne({ user, onLogout }) {
             })}
           </div>
 
-          {/* ── SOUS-DOSSIERS DOCUMENTS ── */}
           {activeTab==="documents"&&(
             <div style={{display:"flex",gap:8,marginBottom:16}}>
               {[{key:"anamnese",icon:"📋",label:"Anamnèse"},{key:"protocole",icon:"🌿",label:"Protocole"},{key:"complements",icon:"💊",label:"Compléments"}].map(({key,icon,label})=>(
@@ -1309,7 +1299,6 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── STATS MINI ── */}
           <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20,padding:"10px 14px",background:P.pSurface,borderRadius:12,border:`0.5px solid ${P.pBorder}`,boxShadow:P.shadowInner}}>
             {[
               anamneses.length>0&&{label:"Questionnaire rempli",col:P.pGreen,dot:"✓"},
@@ -1341,7 +1330,6 @@ function Praticienne({ user, onLogout }) {
             </div>
           </details>
 
-          {/* ── TAB INFOS ── */}
           {activeTab==="infos"&&(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1350,74 +1338,29 @@ function Praticienne({ user, onLogout }) {
                   {editInfos?"Annuler":"✏️ Modifier"}
                 </button>
               </div>
-              {[
-                {label:"Prénom",key:"prenom"},
-                {label:"Nom",key:"nom"},
-                {label:"Date de naissance",key:"dateNaissance",placeholder:"JJ/MM/AAAA"},
-                {label:"Adresse",key:"adresse",placeholder:"Rue, ville, code postal"},
-                {label:"Téléphone",key:"tel",placeholder:"06 00 00 00 00"},
-                {label:"Email",key:"email",readonly:true},
-              ].map(({label,key,placeholder,readonly:ro})=>(
+              {[{label:"Prénom",key:"prenom"},{label:"Nom",key:"nom"},{label:"Date de naissance",key:"dateNaissance",placeholder:"JJ/MM/AAAA"},{label:"Adresse",key:"adresse",placeholder:"Rue, ville, code postal"},{label:"Téléphone",key:"tel",placeholder:"06 00 00 00 00"},{label:"Email",key:"email",readonly:true}].map(({label,key,placeholder,readonly:ro})=>(
                 <div key={key} style={{marginBottom:12}}>
                   <p style={{color:P.pTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>{label}</p>
                   {editInfos&&!ro
                     ?<input value={infosForm[key]||""} onChange={e=>setInfosForm(p=>({...p,[key]:e.target.value}))} placeholder={placeholder||label} style={{width:"100%",background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-                    :<div style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <p style={{color:selected[key]?P.pText:P.pTextDim,fontSize:13,fontFamily:P.sans}}>{selected[key]||"—"}</p>
-                      <button onClick={()=>navigator.clipboard.writeText(selected[key]||"")} style={{background:"none",border:"none",color:P.pTextDim,cursor:"pointer",fontSize:12,padding:"2px 6px"}} title="Copier">📋</button>
-                    </div>
+                    :<div style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><p style={{color:selected[key]?P.pText:P.pTextDim,fontSize:13,fontFamily:P.sans}}>{selected[key]||"—"}</p><button onClick={()=>navigator.clipboard.writeText(selected[key]||"")} style={{background:"none",border:"none",color:P.pTextDim,cursor:"pointer",fontSize:12,padding:"2px 6px"}} title="Copier">📋</button></div>
                   }
                 </div>
               ))}
-              {editInfos&&(
-                <button onClick={async()=>{
-                  setSavingInfos(true);
-                  await updateDoc(doc(db,"users",selected.uid),{
-                    prenom:infosForm.prenom,
-                    nom:infosForm.nom,
-                    dateNaissance:infosForm.dateNaissance,
-                    adresse:infosForm.adresse,
-                    tel:infosForm.tel,
-                  });
-                  setEditInfos(false);
-                  setSavingInfos(false);
-                  showToast("Informations mises à jour ✓");
-                }} disabled={savingInfos} style={{width:"100%",background:P.pAccent,color:"#1C1410",border:"none",borderRadius:30,padding:"12px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",marginTop:8}}>
-                  {savingInfos?"Enregistrement…":"Enregistrer les modifications"}
-                </button>
-              )}
+              {editInfos&&(<button onClick={async()=>{setSavingInfos(true);await updateDoc(doc(db,"users",selected.uid),{prenom:infosForm.prenom,nom:infosForm.nom,dateNaissance:infosForm.dateNaissance,adresse:infosForm.adresse,tel:infosForm.tel});setEditInfos(false);setSavingInfos(false);showToast("Informations mises à jour ✓");}} disabled={savingInfos} style={{width:"100%",background:P.pAccent,color:"#1C1410",border:"none",borderRadius:30,padding:"12px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",marginTop:8}}>{savingInfos?"Enregistrement…":"Enregistrer les modifications"}</button>)}
             </div>
           )}
 
-          {/* ── TAB SUIVIS ── */}
           {activeTab==="suivis"&&(
             <div>
               {entries.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli de suivi.`} theme="p"/>
                 :[...entries].reverse().map(e=>{
                   const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean),avg=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null,sc=avg?SC.find(x=>x.v===Math.round(avg)):null;
-                  return(
-                    <div key={e.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:12}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                        <div><p style={{color:P.pText,fontWeight:500}}>{e.weekLabel}</p><p style={{color:P.pTextDim,fontSize:12}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p></div>
-                        <ScoreDot value={avg?Math.round(avg):null} size={40}/>
-                      </div>
-                      {e.complementsPris&&Object.keys(e.complementsPris).length>0&&(
-                        <div style={{marginBottom:10}}>
-                          <p style={{color:P.pGreen,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Compléments</p>
-                          {Object.entries(e.complementsPris).map(([comp,statut])=>{const colors={"Pris régulièrement":P.pGreen,"Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"};return<div key={comp} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",background:P.pSurface2,borderRadius:8,marginBottom:4}}><span style={{color:P.pTextMid,fontSize:13}}>{comp}</span><span style={{color:colors[statut]||P.pTextDim,fontSize:12,fontWeight:500}}>{statut}</span></div>;})}
-                        </div>
-                      )}
-                      {e.cyclePhase&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>Phase : {e.cyclePhase}</p>{e.cycleNote&&<p style={{color:P.pTextMid,fontSize:13}}>{e.cycleNote}</p>}</div>}
-                      {TI.filter(i=>e.scores?.[i.key]).map(i=>{const sc2=SC.find(x=>x.v===e.scores[i.key]);return<div key={i.key} style={{background:P.pSurface2,borderRadius:8,padding:"8px 12px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:e.notes?.[i.key]?4:0}}><span style={{color:P.pTextMid,fontSize:13}}>{i.icon} {i.label}</span><span style={{color:sc2?.color||P.pTextDim,fontSize:12,fontWeight:500}}>{sc2?.label}</span></div>{e.notes?.[i.key]&&<p style={{color:P.pTextDim,fontSize:12,fontStyle:"italic"}}>{e.notes[i.key]}</p>}</div>;})}
-                      {e.humeur_libre&&<div style={{background:P.pGreenDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pGreen,fontSize:10,marginBottom:4}}>Humeur</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.humeur_libre}</p></div>}
-                      {e.confidences&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px"}}><p style={{color:P.pAccent,fontSize:10,marginBottom:4}}>Ajout</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.confidences}</p></div>}
-                    </div>
-                  );
+                  return(<div key={e.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{color:P.pText,fontWeight:500}}>{e.weekLabel}</p><p style={{color:P.pTextDim,fontSize:12}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p></div><ScoreDot value={avg?Math.round(avg):null} size={40}/></div>{e.complementsPris&&Object.keys(e.complementsPris).length>0&&(<div style={{marginBottom:10}}><p style={{color:P.pGreen,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Compléments</p>{Object.entries(e.complementsPris).map(([comp,statut])=>{const colors={"Pris régulièrement":P.pGreen,"Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"};return<div key={comp} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",background:P.pSurface2,borderRadius:8,marginBottom:4}}><span style={{color:P.pTextMid,fontSize:13}}>{comp}</span><span style={{color:colors[statut]||P.pTextDim,fontSize:12,fontWeight:500}}>{statut}</span></div>;})}</div>)}{e.cyclePhase&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>Phase : {e.cyclePhase}</p>{e.cycleNote&&<p style={{color:P.pTextMid,fontSize:13}}>{e.cycleNote}</p>}</div>}{TI.filter(i=>e.scores?.[i.key]).map(i=>{const sc2=SC.find(x=>x.v===e.scores[i.key]);return<div key={i.key} style={{background:P.pSurface2,borderRadius:8,padding:"8px 12px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:e.notes?.[i.key]?4:0}}><span style={{color:P.pTextMid,fontSize:13}}>{i.icon} {i.label}</span><span style={{color:sc2?.color||P.pTextDim,fontSize:12,fontWeight:500}}>{sc2?.label}</span></div>{e.notes?.[i.key]&&<p style={{color:P.pTextDim,fontSize:12,fontStyle:"italic"}}>{e.notes[i.key]}</p>}</div>;})} {e.humeur_libre&&<div style={{background:P.pGreenDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pGreen,fontSize:10,marginBottom:4}}>Humeur</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.humeur_libre}</p></div>}{e.confidences&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px"}}><p style={{color:P.pAccent,fontSize:10,marginBottom:4}}>Ajout</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.confidences}</p></div>}</div>);
                 })}
             </div>
           )}
 
-          {/* ── TAB ÉVOLUTION ── */}
           {activeTab==="evolution"&&(
             <div>
               {entries.length<2?<EmptyState message={`${selected.prenom} n'a pas encore assez de suivis.`} theme="p"/>:(
@@ -1429,31 +1372,13 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── TAB COMPLÉMENTS ── */}
           {activeTab==="complements"&&(
             <div>
               {clientData?.complements?.length>0?clientData.complements.map((c,i)=>{
                 const nom=typeof c==="string"?c:c.nom,lien=typeof c==="string"?"":c.lien,posologie=typeof c==="string"?"":c.posologie,codePromo=typeof c==="string"?"":c.codePromo;
                 const isEditing=typeof editingComplement==="object"&&editingComplement?.idx===i,edited=isEditing?editingComplement:null;
-                if(isEditing&&edited)return(
-                  <div key={i} style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:8}}>
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      <input value={edited.nom} onChange={e=>setEditingComplement({...edited,nom:e.target.value})} placeholder="Nom" style={{...iP("p"),fontSize:13}}/>
-                      <input value={edited.posologie} onChange={e=>setEditingComplement({...edited,posologie:e.target.value})} placeholder="Posologie" style={{...iP("p"),fontSize:13}}/>
-                      <input value={edited.lien} onChange={e=>setEditingComplement({...edited,lien:e.target.value})} placeholder="Lien produit" style={{...iP("p"),fontSize:13}}/>
-                      <input value={edited.codePromo} onChange={e=>setEditingComplement({...edited,codePromo:e.target.value})} placeholder="Code promo" style={{...iP("p"),fontSize:13}}/>
-                      <div style={{display:"flex",gap:8}}><Btn onClick={()=>updateComplement(i,{nom:edited.nom,lien:edited.lien,posologie:edited.posologie,codePromo:edited.codePromo})} variant="primary" small>Enregistrer</Btn><Btn onClick={()=>setEditingComplement(null)} variant="ghost" theme="p" small>Annuler</Btn></div>
-                    </div>
-                  </div>
-                );
-                return(
-                  <div key={i} style={{background:P.pSurface,borderRadius:10,padding:"12px 16px",marginBottom:8,border:`1px solid ${P.pBorder}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                      <div style={{flex:1}}><p style={{color:P.pText,fontSize:14,fontWeight:500,marginBottom:posologie?4:0}}>{nom}</p>{posologie&&<p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>💊 {posologie}</p>}<div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:4}}>{lien&&<a href={lien} target="_blank" rel="noreferrer" style={{color:P.pGreen,fontSize:12,textDecoration:"none"}}>→ Commander</a>}{codePromo&&<span style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:6,padding:"2px 8px",color:P.pAccent,fontSize:11,fontWeight:500}}>🏷 {codePromo}</span>}</div></div>
-                      <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:8}}><button onClick={()=>setEditingComplement({idx:i,nom,lien:lien||"",posologie:posologie||"",codePromo:codePromo||""})} style={{background:"none",border:"none",color:P.pTextDim,fontSize:13,cursor:"pointer"}}>✏️</button><button onClick={()=>removeComplement(i)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer"}}>×</button></div>
-                    </div>
-                  </div>
-                );
+                if(isEditing&&edited)return(<div key={i} style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:8}}><div style={{display:"flex",flexDirection:"column",gap:8}}><input value={edited.nom} onChange={e=>setEditingComplement({...edited,nom:e.target.value})} placeholder="Nom" style={{...iP("p"),fontSize:13}}/><input value={edited.posologie} onChange={e=>setEditingComplement({...edited,posologie:e.target.value})} placeholder="Posologie" style={{...iP("p"),fontSize:13}}/><input value={edited.lien} onChange={e=>setEditingComplement({...edited,lien:e.target.value})} placeholder="Lien produit" style={{...iP("p"),fontSize:13}}/><input value={edited.codePromo} onChange={e=>setEditingComplement({...edited,codePromo:e.target.value})} placeholder="Code promo" style={{...iP("p"),fontSize:13}}/><div style={{display:"flex",gap:8}}><Btn onClick={()=>updateComplement(i,{nom:edited.nom,lien:edited.lien,posologie:edited.posologie,codePromo:edited.codePromo})} variant="primary" small>Enregistrer</Btn><Btn onClick={()=>setEditingComplement(null)} variant="ghost" theme="p" small>Annuler</Btn></div></div></div>);
+                return(<div key={i} style={{background:P.pSurface,borderRadius:10,padding:"12px 16px",marginBottom:8,border:`1px solid ${P.pBorder}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div style={{flex:1}}><p style={{color:P.pText,fontSize:14,fontWeight:500,marginBottom:posologie?4:0}}>{nom}</p>{posologie&&<p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>💊 {posologie}</p>}<div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:4}}>{lien&&<a href={lien} target="_blank" rel="noreferrer" style={{color:P.pGreen,fontSize:12,textDecoration:"none"}}>→ Commander</a>}{codePromo&&<span style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:6,padding:"2px 8px",color:P.pAccent,fontSize:11,fontWeight:500}}>🏷 {codePromo}</span>}</div></div><div style={{display:"flex",gap:6,flexShrink:0,marginLeft:8}}><button onClick={()=>setEditingComplement({idx:i,nom,lien:lien||"",posologie:posologie||"",codePromo:codePromo||""})} style={{background:"none",border:"none",color:P.pTextDim,fontSize:13,cursor:"pointer"}}>✏️</button><button onClick={()=>removeComplement(i)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer"}}>×</button></div></div></div>);
               }):<EmptyState message="Aucun complément ajouté." theme="p"/>}
               <div style={{marginTop:16,display:"flex",flexDirection:"column",gap:10}}>
                 <input value={newComplement.nom} onChange={e=>setNewComplement(f=>({...f,nom:e.target.value}))} placeholder="Nom du complément" style={iP("p")}/>
@@ -1465,10 +1390,8 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── TAB PROTOCOLE avec IA ── */}
           {activeTab==="protocole"&&(
             <div>
-              {/* BLOC IA */}
               <div style={{background:"rgba(200,133,108,0.08)",border:"1px solid rgba(200,133,108,0.25)",borderRadius:14,padding:"18px 20px",marginBottom:20}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
                   <div>
@@ -1484,42 +1407,11 @@ function Praticienne({ user, onLogout }) {
                     {iaLoading?"⏳ "+iaStep:"✦ Générer"}
                   </button>
                 </div>
-                {iaLoading&&(
-                  <div style={{marginTop:14}}>
-                    <div style={{height:3,background:"rgba(200,133,108,0.15)",borderRadius:2,overflow:"hidden"}}>
-                      <div style={{height:"100%",background:P.pAccent,borderRadius:2,width:iaStep.includes("cliente")?"50%":iaStep.includes("praticienne")?"85%":"20%",transition:"width 0.8s ease"}}/>
-                    </div>
-                    <p style={{color:P.pTextDim,fontSize:11,marginTop:8,textAlign:"center"}}>{iaStep}</p>
-                  </div>
-                )}
+                {iaLoading&&(<div style={{marginTop:14}}><div style={{height:3,background:"rgba(200,133,108,0.15)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",background:P.pAccent,borderRadius:2,width:iaStep.includes("cliente")?"50%":iaStep.includes("praticienne")?"85%":"20%",transition:"width 0.8s ease"}}/></div><p style={{color:P.pTextDim,fontSize:11,marginTop:8,textAlign:"center"}}>{iaStep}</p></div>)}
                 {iaError&&<div style={{marginTop:12,background:"rgba(181,88,58,0.1)",border:"1px solid rgba(181,88,58,0.3)",borderRadius:10,padding:"10px 14px"}}><p style={{color:"#B5583A",fontSize:13}}>{iaError}</p></div>}
-                {!iaLoading&&newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)&&(
-                  <div style={{marginTop:12,background:"rgba(122,158,130,0.1)",border:"1px solid rgba(122,158,130,0.25)",borderRadius:10,padding:"10px 14px"}}>
-                    <p style={{color:P.pGreen,fontSize:12}}>✓ Protocoles générés — Le protocole praticienne est dans les Notes privées. Relis et ajuste avant d'envoyer 🌿</p>
-                  </div>
-                )}
+                {!iaLoading&&newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)&&(<div style={{marginTop:12,background:"rgba(122,158,130,0.1)",border:"1px solid rgba(122,158,130,0.25)",borderRadius:10,padding:"10px 14px"}}><p style={{color:P.pGreen,fontSize:12}}>✓ Protocoles générés — Le protocole praticienne est dans les Notes privées. Relis et ajuste avant d'envoyer 🌿</p></div>)}
               </div>
-
-              {/* Protocoles déjà envoyés */}
-              {protocoles.length>0&&(
-                <div style={{marginBottom:20}}>
-                  {[...protocoles].reverse().map(p=>(
-                    <div key={p.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:10}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                        <p style={{color:P.pAccent,fontFamily:P.serif,fontSize:17,fontWeight:400}}>{p.titre}</p>
-                        <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{color:P.pTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span>
-                          <button onClick={()=>deleteProtocole(p.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,cursor:"pointer"}}>×</button>
-                        </div>
-                      </div>
-                      <p style={{color:P.pTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>
-                      {p.fichiers?.length>0&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><FileTag key={i} name={f.name} url={f.url} theme="p"/>)}</div>}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Éditeur protocole */}
+              {protocoles.length>0&&(<div style={{marginBottom:20}}>{[...protocoles].reverse().map(p=>(<div key={p.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pAccent,fontFamily:P.serif,fontSize:17,fontWeight:400}}>{p.titre}</p><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:P.pTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span><button onClick={()=>deleteProtocole(p.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,cursor:"pointer"}}>×</button></div></div><p style={{color:P.pTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>{p.fichiers?.length>0&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><FileTag key={i} name={f.name} url={f.url} theme="p"/>)}</div>}</div>))}</div>)}
               <div style={{background:P.pSurface,borderRadius:14,border:`1px solid ${P.pBorder}`,padding:"18px 20px"}}>
                 <p style={{color:P.pAccent,fontSize:13,fontWeight:500,marginBottom:14}}>{newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)?"✏️ Relire et envoyer":"Nouveau protocole"}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1538,41 +1430,17 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── TAB QUESTIONNAIRE ── */}
           {activeTab==="anamnese"&&(
             <div>
               <div style={{display:"flex",gap:8,marginBottom:16}}>
                 <Btn onClick={()=>setAnamneseMode("view")} variant={anamneseMode==="view"?"primary":"ghost"} theme="p" small>Réponses</Btn>
                 <Btn onClick={()=>setAnamneseMode("upload")} variant={anamneseMode==="upload"?"primary":"ghost"} theme="p" small>Uploader PDF</Btn>
               </div>
-              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>
-                :anamneses.map(a=>(
-                  <div key={a.id}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                      <p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p>
-                    </div>
-                    {a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={b.url} target="_blank" rel="noreferrer" download={b.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}
-                    {a.form&&Object.keys(a.form).length>0&&(
-                      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                        {[["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(
-                          <div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-              {anamneseMode==="upload"&&(
-                <div style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:18}}>
-                  <input type="file" multiple accept="image/*,application/pdf" onChange={e=>uploadAnamnesePDF(Array.from(e.target.files))} style={{color:P.pTextMid,fontSize:13,marginBottom:12,display:"block",width:"100%"}}/>
-                  {uploadingAnamnese&&<p style={{color:P.pAccent,fontSize:13}}>Upload en cours…</p>}
-                  {uploadedAnamnese.length>0&&<div style={{marginTop:12}}>{uploadedAnamnese.map((f,i)=><FileTag key={i} name={f.name} theme="p"/>)}<Btn onClick={saveAnamnesePDF} disabled={savingAnamnese} variant="primary" style={{marginTop:12}}>{savingAnamnese?"Enregistrement…":"Enregistrer dans le dossier"}</Btn></div>}
-                </div>
-              )}
+              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>:anamneses.map(a=>(<div key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p></div>{a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={b.url} target="_blank" rel="noreferrer" download={b.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}{a.form&&Object.keys(a.form).length>0&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>{[["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(<div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>))}</div>)}</div>)))}
+              {anamneseMode==="upload"&&(<div style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:18}}><input type="file" multiple accept="image/*,application/pdf" onChange={e=>uploadAnamnesePDF(Array.from(e.target.files))} style={{color:P.pTextMid,fontSize:13,marginBottom:12,display:"block",width:"100%"}}/>{uploadingAnamnese&&<p style={{color:P.pAccent,fontSize:13}}>Upload en cours…</p>}{uploadedAnamnese.length>0&&<div style={{marginTop:12}}>{uploadedAnamnese.map((f,i)=><FileTag key={i} name={f.name} theme="p"/>)}<Btn onClick={saveAnamnesePDF} disabled={savingAnamnese} variant="primary" style={{marginTop:12}}>{savingAnamnese?"Enregistrement…":"Enregistrer dans le dossier"}</Btn></div>}</div>)}
             </div>
           )}
 
-          {/* ── TAB DOCUMENTS ── */}
           {activeTab==="documents"&&(
             <div>
               {documents.length===0?<EmptyState message={`Aucun document partagé par ${selected.prenom}.`} theme="p"/>
@@ -1587,7 +1455,6 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── TAB NOTES PRIVÉES ── */}
           {activeTab==="notes"&&(
             <div>
               <div style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:10,padding:"10px 14px",marginBottom:16}}><p style={{color:P.pAccent,fontSize:11}}>🔒 Ces notes sont uniquement visibles par toi.</p></div>
@@ -1612,7 +1479,6 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
-          {/* ── TAB MESSAGE ── */}
           {activeTab==="message"&&(
             <div>
               {messages.length===0?<EmptyState message={`Aucun message envoyé à ${selected.prenom}.`} theme="p"/>
