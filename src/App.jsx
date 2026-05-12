@@ -796,7 +796,7 @@ function Cliente({ user, onLogout }) {
                     <button onClick={()=>deleteDocument(d.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer",padding:"0 4px"}} title="Supprimer ce document">×</button>
                   </div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
+                    {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url).replace("/upload/", "/upload/fl_attachment:false/")} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
                   </div>
                 </div>
               ))}
