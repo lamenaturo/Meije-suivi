@@ -598,7 +598,7 @@ function Cliente({ user, onLogout }) {
 
   const uploadToCloudinaryClient=async(file,folder)=>{
     const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);
-    const isPDF=file?.type==="application/pdf";const endpoint=isPDF?"raw":"image";const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});
+    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}
     const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");
     return{url:data.secure_url,name:file.name,type:file.type};
@@ -1087,7 +1087,7 @@ function Praticienne({ user, onLogout }) {
   if(loading)return<div style={{minHeight:"100vh",background:P.pBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:20,color:P.pTextDim,fontWeight:300}}>Chargement…</p></div>;
 
   const pInner={maxWidth:800,margin:"0 auto",padding:"20px 16px"};
-  const pHeader={background:P.pSurface,borderBottom:`1px solid ${P.pBorder}`,padding:"16px 20px",position:"sticky",top:0,zIndex:50};
+  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});
 
   return (
     <div style={{minHeight:"100vh",background:P.pBg,fontFamily:P.sans,paddingBottom:80}}>
