@@ -1060,7 +1060,7 @@ function Praticienne({ user, onLogout }) {
     const q5=query(collection(db,"documents"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setDocuments(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     let u6=()=>{};
-    try{const q6=query(collection(db,"notes_privees"),where("clientUid","==",c.uid),orderBy("date","desc"));u6=onSnapshot(q6,s=>setNoteHistory(s.docs.map(d=>({id:d.id,...d.data()}))||[]),()=>setNoteHistory([]));}catch{setNoteHistory([]);}
+    try{const q6=query(collection(db,"notes_privees"),where("clientUid","==",c.uid),orderBy("date","desc"));u6=onSnapshot(q6,s=>{const all=s.docs.map(d=>({id:d.id,...d.data()}))||[];setNoteHistory(all);const protoDoc=all.find(n=>n.type==="protocole_praticienne_ia"||n.type==="protocole_praticienne");if(protoDoc)setProtoPrat(protoDoc.text||"");},()=>setNoteHistory([]));}catch{setNoteHistory([]);}
     window._clientUnsubs=[u0,u1,u2,u3,u4,u5,u6];
     setPrivateNotes("");setMainView("fiche");
   },[]);
@@ -1514,7 +1514,7 @@ function Praticienne({ user, onLogout }) {
               {noteHistory.length>0&&(
                 <div>
                   <p style={{color:P.pTextDim,fontSize:11,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}}>Historique des notes</p>
-                  {noteHistory.map(n=>(
+                  {noteHistory.filter(n=>n.type!=="protocole_praticienne"&&n.type!=="protocole_praticienne_ia").map(n=>(
                     <div key={n.id} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:10}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pTextDim,fontSize:11}}>{new Date(n.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p><button onClick={()=>deleteNote(n.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:16,cursor:"pointer",lineHeight:1}}>×</button></div>
                       <p style={{color:P.pTextMid,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.text}</p>
