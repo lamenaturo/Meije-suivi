@@ -7,7 +7,6 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Lire et parser le body
   let body;
   try {
     if (req.body && typeof req.body === "object") {
@@ -41,8 +40,8 @@ module.exports = async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: max_tokens || 4000,
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: max_tokens || 2000,
         system,
         messages,
       }),
