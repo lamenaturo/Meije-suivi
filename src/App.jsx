@@ -918,15 +918,26 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
   try {
     setIaStep("Génération du protocole cliente…");
     const callIA = async (system, userText) => {
-      const r = await fetch("/api/claude", {
+      const apiKey = process.env.REACT_APP_ANTHROPIC_KEY;
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ max_tokens: 4000, system, messages: [{ role: "user", content: userText }] }),
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "pdfs-2024-09-25",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2000,
+          system,
+          messages: [{ role: "user", content: userText }],
+        }),
       });
       const raw = await r.text();
       try {
         const d = JSON.parse(raw);
-        if (!r.ok) throw new Error(d.error || JSON.stringify(d).slice(0,200));
+        if (!r.ok) throw new Error(d.error?.message || JSON.stringify(d).slice(0,200));
         return d.content?.find(b => b.type === "text")?.text || "";
       } catch(e) {
         throw new Error("Réponse API invalide : " + raw.slice(0, 200));
