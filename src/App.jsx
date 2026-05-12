@@ -858,7 +858,7 @@ const PRAT_NAV = [
 
 // ─── FONCTION IA ──────────────────────────────────────────────────────────────
 
-async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc }) {
+async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc, onSuccess }) {
   setIaLoading(true); setIaError("");
 
   const bilans = [];
@@ -991,8 +991,10 @@ function Praticienne({ user, onLogout }) {
   const protocoleTextareaRef=useRef(null);
 
   // ── MODIFICATION 3 : état pour les notifs lues (persisté localStorage) ──
-  const [clearedActivity,setClearedActivity]=useState(()=>{try{return JSON.parse(localStorage.getItem("cleared_notifs")||"[]");}catch{return[];}});
-  useEffect(()=>{try{localStorage.setItem("cleared_notifs",JSON.stringify(clearedActivity));}catch{};},[clearedActivity]);
+  const [lastSeenDate,setLastSeenDate]=useState(()=>{try{return localStorage.getItem("last_seen_notif")||"";}catch{return"";}});
+  const clearedActivity=[];
+  const setClearedActivity=()=>{};
+  useEffect(()=>{try{localStorage.setItem("last_seen_notif",lastSeenDate);}catch{};},[lastSeenDate]);
 
   const showToast=useCallback((msg)=>setToast(msg),[]);
   const getDefaultTitre=(prenom,nb)=>`Protocole n°${nb+1} — ${prenom}`;
@@ -1079,8 +1081,8 @@ function Praticienne({ user, onLogout }) {
   const deleteProtocole=async(id)=>{if(!window.confirm("Supprimer ce protocole ?"))return;await deleteDoc(doc(db,"protocoles",id));showToast("Protocole supprimé");};
 
   // ── MODIFICATION 3 : nombre de notifs non lues (hors cleared) ──
-  const visibleActivity = recentActivity.filter(a => !clearedActivity.includes(a.id));
-  const unreadCount = visibleActivity.length;
+  const visibleActivity = recentActivity;
+  const unreadCount = lastSeenDate ? recentActivity.filter(a => new Date(a.date) > new Date(lastSeenDate)).length : recentActivity.length;
 
   if(loading)return<div style={{minHeight:"100vh",background:P.pBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:20,color:P.pTextDim,fontWeight:300}}>Chargement…</p></div>;
 
@@ -1101,7 +1103,7 @@ function Praticienne({ user, onLogout }) {
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             {/* ── MODIFICATION 3 : cloche avec bouton "Tout effacer" ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{setLastSeenDate(new Date().toISOString());setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 🔔{unreadCount>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{unreadCount}</span>}
               </button>
               {showNotifPanel&&(
@@ -1109,7 +1111,7 @@ function Praticienne({ user, onLogout }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                     <p style={{fontFamily:P.serif,fontSize:15,color:P.pText}}>Activité récente</p>
                     {visibleActivity.length>0&&(
-                      <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setSeenCount(0);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
+                      <button onClick={()=>{setLastSeenDate(new Date().toISOString());setShowNotifPanel(false);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
                         Tout effacer
                       </button>
                     )}
@@ -1129,7 +1131,7 @@ function Praticienne({ user, onLogout }) {
                             <p style={{fontSize:12,color:"rgba(242,232,218,0.8)"}}>{icons[a.type]} <span style={{color:P.pAccent}}>{prenom}</span> {labels[a.type]}</p>
                             <p style={{fontSize:10,color:"rgba(242,232,218,0.3)",marginTop:2}}>{timeLabel}</p>
                           </div>
-                          <button onClick={()=>setClearedActivity(prev=>[...prev,a.id])} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
+                          <button onClick={()=>setLastSeenDate(new Date(a.date).toISOString())} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
                         </div>
                       );
                     })
