@@ -900,75 +900,38 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
   const SYSTEM_CLIENT = getSystemClient(selected.prenom);
   const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
 
-  // Lire les bilans côté client et convertir en base64
-  setIaStep("Chargement des bilans…");
-  const docsContent = [];
-  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes("/raw/upload/")).slice(0, 3);
-  const images = bilans.filter(b => b.type?.includes("image") || b.url?.includes("/image/upload/")).slice(0, 2);
-
-  for (const bilan of [...pdfs, ...images]) {
-    try {
-      const r = await fetch(bilan.url);
-      if (!r.ok) continue;
-      const blob = await r.blob();
-      const b64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result.split(",")[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(blob);
-      });
-      const isPdf = bilan.type?.includes("pdf") || bilan.url?.includes("/raw/upload/");
-      if (isPdf) {
-        docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: bilan.name || "Bilan" });
-      } else {
-        docsContent.push({ type: "image", source: { type: "base64", media_type: bilan.type || "image/jpeg", data: b64 } });
-      }
-    } catch { continue; }
-  }
-
   try {
     setIaStep("Génération du protocole cliente…");
     const callIA = async (system, userText) => {
-      const apiKey = process.env.REACT_APP_ANTHROPIC_KEY;
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const r = await fetch("/api/claude", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-beta": "pdfs-2024-09-25",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 2000,
           system,
           messages: [{ role: "user", content: userText }],
+          max_tokens: 2000,
         }),
       });
       const raw = await r.text();
       try {
         const d = JSON.parse(raw);
-        if (!r.ok) throw new Error(d.error?.message || JSON.stringify(d).slice(0,200));
+        if (!r.ok) throw new Error(d.error || JSON.stringify(d).slice(0,200));
         return d.content?.find(b => b.type === "text")?.text || "";
       } catch(e) {
         throw new Error("Réponse API invalide : " + raw.slice(0, 200));
       }
     };
 
-    const texteClient = [
-      { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
-      ...docsContent,
-    ];
-    const protocoleCliente = await callIA(SYSTEM_CLIENT, texteClient);
+    const protocoleCliente = await callIA(SYSTEM_CLIENT,
+      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.`
+    );
 
     if (!protocoleCliente) { setIaError("Protocole cliente vide — vérifie la clé API dans Vercel."); setIaLoading(false); return; }
 
     setIaStep("Génération du protocole praticienne…");
-    const textePrat = [
-      { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.` },
-      ...docsContent,
-    ];
-    const protocolePraticienne = await callIA(SYSTEM_PRAT, textePrat);
+    const protocolePraticienne = await callIA(SYSTEM_PRAT,
+      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.`
+    );
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
@@ -982,6 +945,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
 
     setIaStep("");
     showToast("Protocoles générés ✓ Relis avant d'envoyer 🌿");
+    if (onSuccess) onSuccess();
   } catch (e) {
     setIaError("Erreur lors de la génération : " + e.message);
   }
@@ -1075,9 +1039,13 @@ function Praticienne({ user, onLogout }) {
 
   const handleGenererIA=async()=>{
     setIaGenerated(false);
-    await genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc});
-    setIaGenerated(true);
-    setTimeout(()=>{protocoleTextareaRef.current?.scrollIntoView({behavior:"smooth",block:"center"});},150);
+    setIaError("");
+    await genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc,
+      onSuccess:()=>{
+        setIaGenerated(true);
+        setTimeout(()=>{protocoleTextareaRef.current?.scrollIntoView({behavior:"smooth",block:"center"});},150);
+      }
+    });
   };
 
   const saveProtoPrat=async()=>{if(!protoPrat.trim()||!selected)return;setSavingProtoPrat(true);await setDoc(doc(db,"notes_privees",`proto_${selected.uid}`),{clientUid:selected.uid,type:"protocole_praticienne",text:protoPrat.trim(),date:new Date().toISOString()});setSavingProtoPrat(false);showToast("Protocole praticienne enregistré ✓");};
