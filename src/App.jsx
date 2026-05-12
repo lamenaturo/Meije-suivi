@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useRef } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -581,7 +581,7 @@ function Cliente({ user, onLogout }) {
     const u=onSnapshot(q,s=>{setEntries(s.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});
     const q2=query(collection(db,"messages"),where("toUid","==",user.uid),orderBy("date","asc"));
     const u2=onSnapshot(q2,s=>setMessages(s.docs.map(d=>({id:d.id,...d.data()}))));
-    const q3=query(collection(db,"anamneses"),where("userUid","==",user.uid),orderBy("date","desc"));
+    const q3=query(collection(db,"anamneses"),where("userUid","==",user.uid),orderBy("date","asc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))));
     const q5=query(collection(db,"protocoles"),where("toUid","==",user.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setProtocoles(s.docs.map(d=>({id:d.id,...d.data()}))));
@@ -1016,6 +1016,8 @@ function Praticienne({ user, onLogout }) {
   const [iaLoading,setIaLoading]=useState(false);
   const [iaStep,setIaStep]=useState("");
   const [iaError,setIaError]=useState("");
+  const [iaGenerated,setIaGenerated]=useState(false);
+  const protocoleTextareaRef=useRef(null);
 
   // ── MODIFICATION 3 : état pour les notifs lues ──
   const [clearedActivity,setClearedActivity]=useState([]);
@@ -1042,7 +1044,7 @@ function Praticienne({ user, onLogout }) {
 
   const select=useCallback(c=>{
     if(window._clientUnsubs)window._clientUnsubs.forEach(fn=>fn());
-    setSelected(c);setNewMsg("");setActiveTab(null);setAnamneseMode("view");setIaError("");setIaStep("");
+    setSelected(c);setNewMsg("");setActiveTab(null);setAnamneseMode("view");setIaError("");setIaStep("");setIaGenerated(false);
     setClientData(null);setEntries([]);setMessages([]);setAnamneses([]);setProtocoles([]);setDocuments([]);setNoteHistory([]);
     setNewProtocole({titre:getDefaultTitre(c.prenom,0),contenu:getDefaultMessage(c.prenom)});
     const userRef=doc(db,"users",c.uid);
@@ -1051,7 +1053,7 @@ function Praticienne({ user, onLogout }) {
     const u1=onSnapshot(q1,s=>setEntries(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q2=query(collection(db,"messages"),where("toUid","==",c.uid),orderBy("date","asc"));
     const u2=onSnapshot(q2,s=>setMessages(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
-    const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","desc"));
+    const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q4=query(collection(db,"protocoles"),where("toUid","==",c.uid),orderBy("date","asc"));
     const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>({...prev,titre:getDefaultTitre(c.prenom,p.length)}));});
@@ -1063,7 +1065,12 @@ function Praticienne({ user, onLogout }) {
     setPrivateNotes("");setMainView("fiche");
   },[]);
 
-  const handleGenererIA=()=>genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc});
+  const handleGenererIA=async()=>{
+    setIaGenerated(false);
+    await genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc});
+    setIaGenerated(true);
+    setTimeout(()=>{protocoleTextareaRef.current?.scrollIntoView({behavior:"smooth",block:"center"});},150);
+  };
 
   const saveProtoPrat=async()=>{if(!protoPrat.trim()||!selected)return;setSavingProtoPrat(true);await setDoc(doc(db,"notes_privees",`proto_${selected.uid}`),{clientUid:selected.uid,type:"protocole_praticienne",text:protoPrat.trim(),date:new Date().toISOString()});setSavingProtoPrat(false);showToast("Protocole praticienne enregistré ✓");};
   const saveNote=async()=>{if(!privateNotes.trim())return;setSavingNote(true);await addDoc(collection(db,"notes_privees"),{clientUid:selected.uid,clientPrenom:selected.prenom,text:privateNotes.trim(),date:new Date().toISOString()});setPrivateNotes("");setSavingNote(false);showToast("Note enregistrée ✓");};
@@ -1452,14 +1459,14 @@ function Praticienne({ user, onLogout }) {
                 </div>
                 {iaLoading&&(<div style={{marginTop:14}}><div style={{height:3,background:"rgba(200,133,108,0.15)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",background:P.pAccent,borderRadius:2,width:iaStep.includes("cliente")?"50%":iaStep.includes("praticienne")?"85%":"20%",transition:"width 0.8s ease"}}/></div><p style={{color:P.pTextDim,fontSize:11,marginTop:8,textAlign:"center"}}>{iaStep}</p></div>)}
                 {iaError&&<div style={{marginTop:12,background:"rgba(181,88,58,0.1)",border:"1px solid rgba(181,88,58,0.3)",borderRadius:10,padding:"10px 14px"}}><p style={{color:"#B5583A",fontSize:13}}>{iaError}</p></div>}
-                {!iaLoading&&newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)&&(<div style={{marginTop:12,background:"rgba(122,158,130,0.1)",border:"1px solid rgba(122,158,130,0.25)",borderRadius:10,padding:"10px 14px"}}><p style={{color:P.pGreen,fontSize:12}}>✓ Protocoles générés — Le protocole praticienne est dans les Notes privées. Relis et ajuste avant d'envoyer 🌿</p></div>)}
+                {iaGenerated&&!iaLoading&&(<div style={{marginTop:12,background:"rgba(122,158,130,0.15)",border:"1px solid rgba(122,158,130,0.4)",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>⬇️</span><div><p style={{color:P.pGreen,fontSize:13,fontWeight:500}}>Protocoles générés — fais défiler pour relire !</p><p style={{color:"rgba(122,158,130,0.8)",fontSize:11,marginTop:2}}>Le protocole praticienne technique est dans l'onglet Notes. Relis et ajuste avant d'envoyer 🌿</p></div></div>)}
               </div>
               {protocoles.length>0&&(<div style={{marginBottom:20}}>{[...protocoles].reverse().map(p=>(<div key={p.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pAccent,fontFamily:P.serif,fontSize:17,fontWeight:400}}>{p.titre}</p><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:P.pTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span><button onClick={()=>deleteProtocole(p.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,cursor:"pointer"}}>×</button></div></div><p style={{color:P.pTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>{p.fichiers?.length>0&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><FileTag key={i} name={f.name} url={f.url} theme="p"/>)}</div>}</div>))}</div>)}
               <div style={{background:P.pSurface,borderRadius:14,border:`1px solid ${P.pBorder}`,padding:"18px 20px"}}>
                 <p style={{color:P.pAccent,fontSize:13,fontWeight:500,marginBottom:14}}>{newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)?"✏️ Relire et envoyer":"Nouveau protocole"}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <input value={newProtocole.titre} onChange={e=>setNewProtocole(p=>({...p,titre:e.target.value}))} placeholder="Titre" style={iP("p")}/>
-                  <textarea value={newProtocole.contenu} onChange={e=>setNewProtocole(p=>({...p,contenu:e.target.value}))} placeholder="Message d'accompagnement… ou génère-le avec l'IA ci-dessus 🌿" rows={14} style={{...iP("p"),resize:"vertical"}}/>
+                  <textarea ref={protocoleTextareaRef} value={newProtocole.contenu} onChange={e=>setNewProtocole(p=>({...p,contenu:e.target.value}))} placeholder="Message d'accompagnement… ou génère-le avec l'IA ci-dessus 🌿" rows={14} style={{...iP("p"),resize:"vertical",transition:"box-shadow 0.4s",boxShadow:iaGenerated?"0 0 0 2px rgba(122,158,130,0.6), 0 0 20px rgba(122,158,130,0.2)":"none"}}/>
                   <div>
                     <p style={{color:P.pTextDim,fontSize:12,marginBottom:6}}>Joindre un fichier :</p>
                     <p style={{color:P.pTextDim,fontSize:11,marginBottom:8}}>Max 10 MB · <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{color:P.pAccent}}>ilovepdf.com</a></p>
