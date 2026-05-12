@@ -581,7 +581,7 @@ function Cliente({ user, onLogout }) {
     const u=onSnapshot(q,s=>{setEntries(s.docs.map(d=>({id:d.id,...d.data()})));setLoading(false);});
     const q2=query(collection(db,"messages"),where("toUid","==",user.uid),orderBy("date","asc"));
     const u2=onSnapshot(q2,s=>setMessages(s.docs.map(d=>({id:d.id,...d.data()}))));
-    const q3=query(collection(db,"anamneses"),where("userUid","==",user.uid),orderBy("date","asc"));
+    const q3=query(collection(db,"anamneses"),where("userUid","==",user.uid),orderBy("date","desc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))));
     const q5=query(collection(db,"protocoles"),where("toUid","==",user.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setProtocoles(s.docs.map(d=>({id:d.id,...d.data()}))));
@@ -1051,7 +1051,7 @@ function Praticienne({ user, onLogout }) {
     const u1=onSnapshot(q1,s=>setEntries(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q2=query(collection(db,"messages"),where("toUid","==",c.uid),orderBy("date","asc"));
     const u2=onSnapshot(q2,s=>setMessages(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
-    const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","asc"));
+    const q3=query(collection(db,"anamneses"),where("userUid","==",c.uid),orderBy("date","desc"));
     const u3=onSnapshot(q3,s=>setAnamneses(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     const q4=query(collection(db,"protocoles"),where("toUid","==",c.uid),orderBy("date","asc"));
     const u4=onSnapshot(q4,s=>{const p=s.docs.map(d=>({id:d.id,...d.data()}))||[];setProtocoles(p);setNewProtocole(prev=>({...prev,titre:getDefaultTitre(c.prenom,p.length)}));});
