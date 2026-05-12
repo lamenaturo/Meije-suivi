@@ -900,32 +900,20 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     ].filter(Boolean).join("\n");
   })() : "Pas encore de suivi rempli.";
 
-  const toBase64 = async (url) => {
+  // Extraire les public_ids Cloudinary depuis les URLs
+  const extractPublicId = (url) => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      return new Promise((res2, rej) => {
-        const r = new FileReader();
-        r.onload = () => res2(r.result.split(",")[1]);
-        r.onerror = rej;
-        r.readAsDataURL(blob);
-      });
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+      return match ? match[1] : null;
     } catch { return null; }
   };
 
-  setIaStep("Chargement des bilans…");
-  const docsContent = [];
-  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes(".pdf")).slice(0, 3);
-  const images = bilans.filter(b => b.type?.includes("image")).slice(0, 2);
-
-  for (const pdf of pdfs) {
-    const b64 = await toBase64(pdf.url);
-    if (b64) docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: pdf.name });
-  }
-  for (const img of images) {
-    const b64 = await toBase64(img.url);
-    if (b64) docsContent.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: b64 } });
-  }
+  const bilanPublicIds = bilans.map(b => ({
+    publicId: extractPublicId(b.url),
+    name: b.name,
+    type: b.type,
+    url: b.url,
+  })).filter(b => b.publicId);
 
   const SYSTEM_CLIENT = getSystemClient(selected.prenom);
   const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
@@ -938,21 +926,17 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       body: JSON.stringify({
         max_tokens: 4000,
         system: SYSTEM_CLIENT,
+        bilanPublicIds,
         messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
-          ...docsContent,
+          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
         ]}],
       }),
     });
     const d1 = await r1.json();
-    console.log("[IA] Réponse protocole cliente :", JSON.stringify(d1).slice(0, 300));
-    const protocoleCliente =
-      d1.content?.find(b => b.type === "text")?.text ||
-      (typeof d1.content === "string" ? d1.content : "") ||
-      d1.text || d1.result || d1.completion || d1.message || "";
+    const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || d1.text || d1.error_detail || "";
 
     if (!protocoleCliente) {
-      setIaError("Le protocole cliente est vide. Vérifie la clé API Anthropic dans Vercel (REACT_APP_ANTHROPIC_KEY) et consulte la console.");
+      setIaError("Protocole vide — erreur : " + (d1.error || JSON.stringify(d1).slice(0,150)));
       setIaLoading(false); return;
     }
 
@@ -963,18 +947,14 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       body: JSON.stringify({
         max_tokens: 4000,
         system: SYSTEM_PRAT,
+        bilanPublicIds,
         messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé.` },
-          ...docsContent,
+          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.` },
         ]}],
       }),
     });
     const d2 = await r2.json();
-    console.log("[IA] Réponse protocole praticienne :", JSON.stringify(d2).slice(0, 300));
-    const protocolePraticienne =
-      d2.content?.find(b => b.type === "text")?.text ||
-      (typeof d2.content === "string" ? d2.content : "") ||
-      d2.text || d2.result || d2.completion || d2.message || "";
+    const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || d2.text || "";
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
