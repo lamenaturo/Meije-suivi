@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo, useRef } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { collection, addDoc, doc, setDoc, getDoc, query, orderBy, where, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -15,6 +15,18 @@ const EMAILJS_SERVICE = "service_5bi57sr";
 const EMAILJS_TEMPLATE = "template_3w471uo";
 const EMAILJS_TEMPLATE_BIENVENUE = "template_im5mm8v";
 const EMAILJS_PUBLIC = "zpxiv3rkIbtfdqAQ6";
+
+// ─── CORRECTION URLS PDF CLOUDINARY ─────────────────────────────────────────
+const fixPdfUrl = (url) => {
+  if (!url) return url;
+  // Les PDFs uploadés par erreur via /image/upload → on corrige en /raw/upload
+  if (typeof url === "string" && url.includes(".pdf") && url.includes("/image/upload/")) {
+    return url.replace("/image/upload/", "/raw/upload/");
+  }
+  return url;
+};
+
+
 
 const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Lutéale", "Je ne sais pas"];
 
@@ -598,7 +610,7 @@ function Cliente({ user, onLogout }) {
 
   const uploadToCloudinaryClient=async(file,folder)=>{
     const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);
-    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});
+    const isPDF=file?.type==="application/pdf";const endpoint=isPDF?"raw":"image";const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}
     const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");
     return{url:data.secure_url,name:file.name,type:file.type};
@@ -784,7 +796,7 @@ function Cliente({ user, onLogout }) {
                     <button onClick={()=>deleteDocument(d.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer",padding:"0 4px"}} title="Supprimer ce document">×</button>
                   </div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {d.files?.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
+                    {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
                   </div>
                 </div>
               ))}
@@ -840,7 +852,7 @@ function EmptyState({ message, theme="p" }) {
 function FileTag({ name, url, theme="p" }) {
   const bg=theme==="p"?P.pAccentDim:P.cGreenDim,bd=theme==="p"?P.pAccentBorder:P.cGreenBorder,col=theme==="p"?P.pAccent:P.cGreen;
   const inner=<div style={{display:"inline-flex",alignItems:"center",gap:6,background:bg,border:`1px solid ${bd}`,borderRadius:8,padding:"6px 12px",marginBottom:6,marginRight:6}}><span style={{color:col,fontSize:12}}>📎</span><span style={{color:col,fontSize:12}}>{name}</span>{url&&<span style={{color:col,fontSize:10,opacity:0.7}}>↓</span>}</div>;
-  if(url)return<a href={url} target="_blank" rel="noreferrer" download={name} style={{textDecoration:"none"}}>{inner}</a>;
+  if(url)return<a href={fixPdfUrl(url)} target="_blank" rel="noreferrer" download={name} style={{textDecoration:"none"}}>{inner}</a>;
   return inner;
 }
 
@@ -858,14 +870,17 @@ const PRAT_NAV = [
 
 // ─── FONCTION IA ──────────────────────────────────────────────────────────────
 
-async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc, onSuccess }) {
+async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc }) {
   setIaLoading(true); setIaError("");
 
   const bilans = [];
   documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
   anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
 
-  // Les bilans sont optionnels — l'IA génère avec l'anamnèse même sans bilan
+  if (bilans.length === 0) {
+    setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace.");
+    setIaLoading(false); return;
+  }
 
   const anamneseTexte = anamneses.map(a => {
     if (!a.form) return "";
@@ -897,41 +912,68 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     ].filter(Boolean).join("\n");
   })() : "Pas encore de suivi rempli.";
 
+  const toBase64 = async (url) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((res2, rej) => {
+        const r = new FileReader();
+        r.onload = () => res2(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(blob);
+      });
+    } catch { return null; }
+  };
+
+  setIaStep("Chargement des bilans…");
+  const docsContent = [];
+  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes(".pdf")).slice(0, 3);
+  const images = bilans.filter(b => b.type?.includes("image")).slice(0, 2);
+
+  for (const pdf of pdfs) {
+    const b64 = await toBase64(pdf.url);
+    if (b64) docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: pdf.name });
+  }
+  for (const img of images) {
+    const b64 = await toBase64(img.url);
+    if (b64) docsContent.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: b64 } });
+  }
+
   const SYSTEM_CLIENT = getSystemClient(selected.prenom);
   const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
 
   try {
     setIaStep("Génération du protocole cliente…");
-    const callIA = async (system, userText) => {
-      const r = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system,
-          messages: [{ role: "user", content: userText }],
-          max_tokens: 2000,
-        }),
-      });
-      const raw = await r.text();
-      try {
-        const d = JSON.parse(raw);
-        if (!r.ok) throw new Error(d.error || JSON.stringify(d).slice(0,200));
-        return d.content?.find(b => b.type === "text")?.text || "";
-      } catch(e) {
-        throw new Error("Réponse API invalide : " + raw.slice(0, 200));
-      }
-    };
-
-    const protocoleCliente = await callIA(SYSTEM_CLIENT,
-      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.`
-    );
-
-    if (!protocoleCliente) { setIaError("Protocole cliente vide — vérifie la clé API dans Vercel."); setIaLoading(false); return; }
+    const r1 = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_tokens: 4000,
+        system: SYSTEM_CLIENT,
+        messages: [{ role: "user", content: [
+          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
+          ...docsContent,
+        ]}],
+      }),
+    });
+    const d1 = await r1.json();
+    const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
 
     setIaStep("Génération du protocole praticienne…");
-    const protocolePraticienne = await callIA(SYSTEM_PRAT,
-      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.`
-    );
+    const r2 = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_tokens: 4000,
+        system: SYSTEM_PRAT,
+        messages: [{ role: "user", content: [
+          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé.` },
+          ...docsContent,
+        ]}],
+      }),
+    });
+    const d2 = await r2.json();
+    const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
@@ -945,7 +987,6 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
 
     setIaStep("");
     showToast("Protocoles générés ✓ Relis avant d'envoyer 🌿");
-    if (onSuccess) onSuccess();
   } catch (e) {
     setIaError("Erreur lors de la génération : " + e.message);
   }
@@ -987,14 +1028,9 @@ function Praticienne({ user, onLogout }) {
   const [iaLoading,setIaLoading]=useState(false);
   const [iaStep,setIaStep]=useState("");
   const [iaError,setIaError]=useState("");
-  const [iaGenerated,setIaGenerated]=useState(false);
-  const protocoleTextareaRef=useRef(null);
 
-  // ── MODIFICATION 3 : état pour les notifs lues (persisté localStorage) ──
-  const [lastSeenDate,setLastSeenDate]=useState(()=>{try{return localStorage.getItem("last_seen_notif")||"";}catch{return"";}});
-  const clearedActivity=[];
-  const setClearedActivity=()=>{};
-  useEffect(()=>{try{localStorage.setItem("last_seen_notif",lastSeenDate);}catch{};},[lastSeenDate]);
+  // ── MODIFICATION 3 : état pour les notifs lues ──
+  const [clearedActivity,setClearedActivity]=useState([]);
 
   const showToast=useCallback((msg)=>setToast(msg),[]);
   const getDefaultTitre=(prenom,nb)=>`Protocole n°${nb+1} — ${prenom}`;
@@ -1018,7 +1054,7 @@ function Praticienne({ user, onLogout }) {
 
   const select=useCallback(c=>{
     if(window._clientUnsubs)window._clientUnsubs.forEach(fn=>fn());
-    setSelected(c);setNewMsg("");setActiveTab(null);setAnamneseMode("view");setIaError("");setIaStep("");setIaGenerated(false);
+    setSelected(c);setNewMsg("");setActiveTab(null);setAnamneseMode("view");setIaError("");setIaStep("");
     setClientData(null);setEntries([]);setMessages([]);setAnamneses([]);setProtocoles([]);setDocuments([]);setNoteHistory([]);
     setNewProtocole({titre:getDefaultTitre(c.prenom,0),contenu:getDefaultMessage(c.prenom)});
     const userRef=doc(db,"users",c.uid);
@@ -1034,21 +1070,12 @@ function Praticienne({ user, onLogout }) {
     const q5=query(collection(db,"documents"),where("userUid","==",c.uid),orderBy("date","asc"));
     const u5=onSnapshot(q5,s=>setDocuments(s.docs.map(d=>({id:d.id,...d.data()}))||[]));
     let u6=()=>{};
-    try{const q6=query(collection(db,"notes_privees"),where("clientUid","==",c.uid),orderBy("date","desc"));u6=onSnapshot(q6,s=>{const all=s.docs.map(d=>({id:d.id,...d.data()}))||[];setNoteHistory(all);const protoDoc=all.find(n=>n.type==="protocole_praticienne_ia"||n.type==="protocole_praticienne");if(protoDoc)setProtoPrat(protoDoc.text||"");},()=>setNoteHistory([]));}catch{setNoteHistory([]);}
+    try{const q6=query(collection(db,"notes_privees"),where("clientUid","==",c.uid),orderBy("date","desc"));u6=onSnapshot(q6,s=>setNoteHistory(s.docs.map(d=>({id:d.id,...d.data()}))||[]),()=>setNoteHistory([]));}catch{setNoteHistory([]);}
     window._clientUnsubs=[u0,u1,u2,u3,u4,u5,u6];
     setPrivateNotes("");setMainView("fiche");
   },[]);
 
-  const handleGenererIA=async()=>{
-    setIaGenerated(false);
-    setIaError("");
-    await genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc,
-      onSuccess:()=>{
-        setIaGenerated(true);
-        setTimeout(()=>{protocoleTextareaRef.current?.scrollIntoView({behavior:"smooth",block:"center"});},150);
-      }
-    });
-  };
+  const handleGenererIA=()=>genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc});
 
   const saveProtoPrat=async()=>{if(!protoPrat.trim()||!selected)return;setSavingProtoPrat(true);await setDoc(doc(db,"notes_privees",`proto_${selected.uid}`),{clientUid:selected.uid,type:"protocole_praticienne",text:protoPrat.trim(),date:new Date().toISOString()});setSavingProtoPrat(false);showToast("Protocole praticienne enregistré ✓");};
   const saveNote=async()=>{if(!privateNotes.trim())return;setSavingNote(true);await addDoc(collection(db,"notes_privees"),{clientUid:selected.uid,clientPrenom:selected.prenom,text:privateNotes.trim(),date:new Date().toISOString()});setPrivateNotes("");setSavingNote(false);showToast("Note enregistrée ✓");};
@@ -1081,13 +1108,13 @@ function Praticienne({ user, onLogout }) {
   const deleteProtocole=async(id)=>{if(!window.confirm("Supprimer ce protocole ?"))return;await deleteDoc(doc(db,"protocoles",id));showToast("Protocole supprimé");};
 
   // ── MODIFICATION 3 : nombre de notifs non lues (hors cleared) ──
-  const visibleActivity = recentActivity;
-  const unreadCount = lastSeenDate ? recentActivity.filter(a => new Date(a.date) > new Date(lastSeenDate)).length : recentActivity.length;
+  const visibleActivity = recentActivity.filter(a => !clearedActivity.includes(a.id));
+  const unreadCount = visibleActivity.length > seenCount ? visibleActivity.length - seenCount : 0;
 
   if(loading)return<div style={{minHeight:"100vh",background:P.pBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:20,color:P.pTextDim,fontWeight:300}}>Chargement…</p></div>;
 
   const pInner={maxWidth:800,margin:"0 auto",padding:"20px 16px"};
-  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});
+  const pHeader={background:P.pSurface,borderBottom:`1px solid ${P.pBorder}`,padding:"16px 20px",position:"sticky",top:0,zIndex:50};
 
   return (
     <div style={{minHeight:"100vh",background:P.pBg,fontFamily:P.sans,paddingBottom:80}}>
@@ -1103,7 +1130,7 @@ function Praticienne({ user, onLogout }) {
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             {/* ── MODIFICATION 3 : cloche avec bouton "Tout effacer" ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setLastSeenDate(new Date().toISOString());setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{setSeenCount(visibleActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 🔔{unreadCount>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{unreadCount}</span>}
               </button>
               {showNotifPanel&&(
@@ -1111,7 +1138,7 @@ function Praticienne({ user, onLogout }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                     <p style={{fontFamily:P.serif,fontSize:15,color:P.pText}}>Activité récente</p>
                     {visibleActivity.length>0&&(
-                      <button onClick={()=>{setLastSeenDate(new Date().toISOString());setShowNotifPanel(false);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
+                      <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setSeenCount(0);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
                         Tout effacer
                       </button>
                     )}
@@ -1131,7 +1158,7 @@ function Praticienne({ user, onLogout }) {
                             <p style={{fontSize:12,color:"rgba(242,232,218,0.8)"}}>{icons[a.type]} <span style={{color:P.pAccent}}>{prenom}</span> {labels[a.type]}</p>
                             <p style={{fontSize:10,color:"rgba(242,232,218,0.3)",marginTop:2}}>{timeLabel}</p>
                           </div>
-                          <button onClick={()=>setLastSeenDate(new Date(a.date).toISOString())} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
+                          <button onClick={()=>setClearedActivity(prev=>[...prev,a.id])} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
                         </div>
                       );
                     })
@@ -1437,14 +1464,14 @@ function Praticienne({ user, onLogout }) {
                 </div>
                 {iaLoading&&(<div style={{marginTop:14}}><div style={{height:3,background:"rgba(200,133,108,0.15)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",background:P.pAccent,borderRadius:2,width:iaStep.includes("cliente")?"50%":iaStep.includes("praticienne")?"85%":"20%",transition:"width 0.8s ease"}}/></div><p style={{color:P.pTextDim,fontSize:11,marginTop:8,textAlign:"center"}}>{iaStep}</p></div>)}
                 {iaError&&<div style={{marginTop:12,background:"rgba(181,88,58,0.1)",border:"1px solid rgba(181,88,58,0.3)",borderRadius:10,padding:"10px 14px"}}><p style={{color:"#B5583A",fontSize:13}}>{iaError}</p></div>}
-                {iaGenerated&&!iaLoading&&(<div style={{marginTop:12,background:"rgba(122,158,130,0.15)",border:"1px solid rgba(122,158,130,0.4)",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>⬇️</span><div><p style={{color:P.pGreen,fontSize:13,fontWeight:500}}>Protocoles générés — fais défiler pour relire !</p><p style={{color:"rgba(122,158,130,0.8)",fontSize:11,marginTop:2}}>Le protocole praticienne technique est dans l'onglet Notes. Relis et ajuste avant d'envoyer 🌿</p></div></div>)}
+                {!iaLoading&&newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)&&(<div style={{marginTop:12,background:"rgba(122,158,130,0.1)",border:"1px solid rgba(122,158,130,0.25)",borderRadius:10,padding:"10px 14px"}}><p style={{color:P.pGreen,fontSize:12}}>✓ Protocoles générés — Le protocole praticienne est dans les Notes privées. Relis et ajuste avant d'envoyer 🌿</p></div>)}
               </div>
               {protocoles.length>0&&(<div style={{marginBottom:20}}>{[...protocoles].reverse().map(p=>(<div key={p.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pAccent,fontFamily:P.serif,fontSize:17,fontWeight:400}}>{p.titre}</p><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:P.pTextDim,fontSize:11}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span><button onClick={()=>deleteProtocole(p.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,cursor:"pointer"}}>×</button></div></div><p style={{color:P.pTextMid,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{p.contenu}</p>{p.fichiers?.length>0&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8}}>{p.fichiers.map((f,i)=><FileTag key={i} name={f.name} url={f.url} theme="p"/>)}</div>}</div>))}</div>)}
               <div style={{background:P.pSurface,borderRadius:14,border:`1px solid ${P.pBorder}`,padding:"18px 20px"}}>
                 <p style={{color:P.pAccent,fontSize:13,fontWeight:500,marginBottom:14}}>{newProtocole.contenu&&newProtocole.contenu!==getDefaultMessage(selected.prenom)?"✏️ Relire et envoyer":"Nouveau protocole"}</p>
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   <input value={newProtocole.titre} onChange={e=>setNewProtocole(p=>({...p,titre:e.target.value}))} placeholder="Titre" style={iP("p")}/>
-                  <textarea ref={protocoleTextareaRef} value={newProtocole.contenu} onChange={e=>setNewProtocole(p=>({...p,contenu:e.target.value}))} placeholder="Message d'accompagnement… ou génère-le avec l'IA ci-dessus 🌿" rows={14} style={{...iP("p"),resize:"vertical",transition:"box-shadow 0.4s",boxShadow:iaGenerated?"0 0 0 2px rgba(122,158,130,0.6), 0 0 20px rgba(122,158,130,0.2)":"none"}}/>
+                  <textarea value={newProtocole.contenu} onChange={e=>setNewProtocole(p=>({...p,contenu:e.target.value}))} placeholder="Message d'accompagnement… ou génère-le avec l'IA ci-dessus 🌿" rows={14} style={{...iP("p"),resize:"vertical"}}/>
                   <div>
                     <p style={{color:P.pTextDim,fontSize:12,marginBottom:6}}>Joindre un fichier :</p>
                     <p style={{color:P.pTextDim,fontSize:11,marginBottom:8}}>Max 10 MB · <a href="https://ilovepdf.com" target="_blank" rel="noreferrer" style={{color:P.pAccent}}>ilovepdf.com</a></p>
@@ -1465,7 +1492,7 @@ function Praticienne({ user, onLogout }) {
                 <Btn onClick={()=>setAnamneseMode("upload")} variant={anamneseMode==="upload"?"primary":"ghost"} theme="p" small>Uploader PDF</Btn>
                 {anamneses.length>0&&anamneses[0].pdfText&&<Btn onClick={()=>downloadAnamnesePDF(anamneses[0],selected.prenom)} variant="ghost" theme="p" small>⬇ Télécharger PDF</Btn>}
               </div>
-              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>:anamneses.map(a=>(<div key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p></div>{a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={b.url} target="_blank" rel="noreferrer" download={b.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}{a.form&&Object.keys(a.form).length>0&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>{[["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(<div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>))}</div>)}</div>)))}
+              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>:anamneses.map(a=>(<div key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p></div>{a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={fixPdfUrl(b.url)} target="_blank" rel="noreferrer" download={b.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}{a.form&&Object.keys(a.form).length>0&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>{[["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(<div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>))}</div>)}</div>)))}
               {anamneseMode==="upload"&&(<div style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:18}}><input type="file" multiple accept="image/*,application/pdf" onChange={e=>uploadAnamnesePDF(Array.from(e.target.files))} style={{color:P.pTextMid,fontSize:13,marginBottom:12,display:"block",width:"100%"}}/>{uploadingAnamnese&&<p style={{color:P.pAccent,fontSize:13}}>Upload en cours…</p>}{uploadedAnamnese.length>0&&<div style={{marginTop:12}}>{uploadedAnamnese.map((f,i)=><FileTag key={i} name={f.name} theme="p"/>)}<Btn onClick={saveAnamnesePDF} disabled={savingAnamnese} variant="primary" style={{marginTop:12}}>{savingAnamnese?"Enregistrement…":"Enregistrer dans le dossier"}</Btn></div>}</div>)}
             </div>
           )}
@@ -1477,7 +1504,7 @@ function Praticienne({ user, onLogout }) {
                   <div key={d.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"14px 18px",marginBottom:10}}>
                     <p style={{color:P.pTextDim,fontSize:11,marginBottom:10}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p>
                     <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                      {d.files?.map((f,i)=><a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
+                      {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" download={f.name} style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
                     </div>
                   </div>
                 ))}
@@ -1492,7 +1519,7 @@ function Praticienne({ user, onLogout }) {
               {noteHistory.length>0&&(
                 <div>
                   <p style={{color:P.pTextDim,fontSize:11,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}}>Historique des notes</p>
-                  {noteHistory.filter(n=>n.type!=="protocole_praticienne"&&n.type!=="protocole_praticienne_ia").map(n=>(
+                  {noteHistory.map(n=>(
                     <div key={n.id} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:10}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pTextDim,fontSize:11}}>{new Date(n.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p><button onClick={()=>deleteNote(n.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:16,cursor:"pointer",lineHeight:1}}>×</button></div>
                       <p style={{color:P.pTextMid,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.text}</p>
