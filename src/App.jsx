@@ -852,7 +852,7 @@ function EmptyState({ message, theme="p" }) {
 function FileTag({ name, url, theme="p" }) {
   const bg=theme==="p"?P.pAccentDim:P.cGreenDim,bd=theme==="p"?P.pAccentBorder:P.cGreenBorder,col=theme==="p"?P.pAccent:P.cGreen;
   const inner=<div style={{display:"inline-flex",alignItems:"center",gap:6,background:bg,border:`1px solid ${bd}`,borderRadius:8,padding:"6px 12px",marginBottom:6,marginRight:6}}><span style={{color:col,fontSize:12}}>📎</span><span style={{color:col,fontSize:12}}>{name}</span>{url&&<span style={{color:col,fontSize:10,opacity:0.7}}>↓</span>}</div>;
-  if(url)return<a href={fixPdfUrl(url)} target="_blank" rel="noreferrer" download={name} style={{textDecoration:"none"}}>{inner}</a>;
+  if(url)return<a href={fixPdfUrl(url)} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>{inner}</a>;
   return inner;
 }
 
