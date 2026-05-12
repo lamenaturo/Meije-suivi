@@ -441,12 +441,13 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   const [saved, setSaved] = useState(!!existingData?.id);
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [docs, setDocs] = useState(existingData?.bilans || []);
+  const [docId, setDocId] = useState(existingData?.id || null);
 
   // Sync quand Firestore charge les données en async
   useEffect(() => {
     if (existingData?.bilans) setDocs(existingData.bilans);
-    if (existingData?.form) setForm(f => ({ ...initForm(), ...existingData.form }));
-    if (existingData?.id) setSaved(true);
+    if (existingData?.form) setForm(() => ({ ...initForm(), ...existingData.form }));
+    if (existingData?.id) { setSaved(true); setDocId(existingData.id); }
   }, [existingData?.id]);
 
   const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "di45b4ymc";
@@ -489,10 +490,13 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
         pdfText,
         bilans: docs,
       };
-      if (existingData?.id) {
-        await updateDoc(doc(db, "anamneses", existingData.id), data);
+      if (docId) {
+        // Toujours mettre à jour le même document — jamais de doublon
+        await updateDoc(doc(db, "anamneses", docId), data);
       } else {
-        await addDoc(collection(db, "anamneses"), data);
+        // Première soumission uniquement
+        const ref = await addDoc(collection(db, "anamneses"), data);
+        setDocId(ref.id);
       }
       setSaved(true);
     } catch (e) {
