@@ -1504,7 +1504,7 @@ function Praticienne({ user, onLogout }) {
                   <div key={d.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"14px 18px",marginBottom:10}}>
                     <p style={{color:P.pTextDim,fontSize:11,marginBottom:10}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p>
                     <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                      {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
+                      {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url).replace("/upload/", "/upload/fl_attachment:false/")} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
                     </div>
                   </div>
                 ))}
