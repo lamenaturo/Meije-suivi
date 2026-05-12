@@ -17,14 +17,7 @@ const EMAILJS_TEMPLATE_BIENVENUE = "template_im5mm8v";
 const EMAILJS_PUBLIC = "zpxiv3rkIbtfdqAQ6";
 
 // ─── CORRECTION URLS PDF CLOUDINARY ─────────────────────────────────────────
-const fixPdfUrl = (url) => {
-  if (!url) return url;
-  // Les PDFs uploadés par erreur via /image/upload → on corrige en /raw/upload
-  if (typeof url === "string" && url.includes(".pdf") && url.includes("/image/upload/")) {
-    return url.replace("/image/upload/", "/raw/upload/");
-  }
-  return url;
-};
+const fixPdfUrl = (url) => url;
 
 
 
