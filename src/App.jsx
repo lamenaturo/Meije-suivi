@@ -865,10 +865,7 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
   documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
   anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
 
-  if (bilans.length === 0) {
-    setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace.");
-    setIaLoading(false); return;
-  }
+  // Les bilans sont optionnels — l'IA génère avec l'anamnèse même sans bilan
 
   const anamneseTexte = anamneses.map(a => {
     if (!a.form) return "";
@@ -920,41 +917,32 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
 
   try {
     setIaStep("Génération du protocole cliente…");
-    const r1 = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        max_tokens: 4000,
-        system: SYSTEM_CLIENT,
-        bilanPublicIds,
-        messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
-        ]}],
-      }),
-    });
-    const d1 = await r1.json();
-    const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || d1.text || d1.error_detail || "";
+    const callIA = async (system, userText) => {
+      const r = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ max_tokens: 4000, system, messages: [{ role: "user", content: userText }] }),
+      });
+      const raw = await r.text();
+      try {
+        const d = JSON.parse(raw);
+        if (!r.ok) throw new Error(d.error || JSON.stringify(d).slice(0,200));
+        return d.content?.find(b => b.type === "text")?.text || "";
+      } catch(e) {
+        throw new Error("Réponse API invalide : " + raw.slice(0, 200));
+      }
+    };
 
-    if (!protocoleCliente) {
-      setIaError("Protocole vide — erreur : " + (d1.error || JSON.stringify(d1).slice(0,150)));
-      setIaLoading(false); return;
-    }
+    const protocoleCliente = await callIA(SYSTEM_CLIENT,
+      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.`
+    );
+
+    if (!protocoleCliente) { setIaError("Protocole cliente vide — vérifie les logs Vercel."); setIaLoading(false); return; }
 
     setIaStep("Génération du protocole praticienne…");
-    const r2 = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        max_tokens: 4000,
-        system: SYSTEM_PRAT,
-        bilanPublicIds,
-        messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.` },
-        ]}],
-      }),
-    });
-    const d2 = await r2.json();
-    const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || d2.text || "";
+    const protocolePraticienne = await callIA(SYSTEM_PRAT,
+      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.`
+    );
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
