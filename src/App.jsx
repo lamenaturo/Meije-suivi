@@ -945,7 +945,16 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       }),
     });
     const d1 = await r1.json();
-    const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
+    console.log("[IA] Réponse protocole cliente :", JSON.stringify(d1).slice(0, 300));
+    const protocoleCliente =
+      d1.content?.find(b => b.type === "text")?.text ||
+      (typeof d1.content === "string" ? d1.content : "") ||
+      d1.text || d1.result || d1.completion || d1.message || "";
+
+    if (!protocoleCliente) {
+      setIaError("Le protocole cliente est vide. Vérifie la clé API Anthropic dans Vercel (REACT_APP_ANTHROPIC_KEY) et consulte la console.");
+      setIaLoading(false); return;
+    }
 
     setIaStep("Génération du protocole praticienne…");
     const r2 = await fetch("/api/claude", {
@@ -961,7 +970,11 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       }),
     });
     const d2 = await r2.json();
-    const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
+    console.log("[IA] Réponse protocole praticienne :", JSON.stringify(d2).slice(0, 300));
+    const protocolePraticienne =
+      d2.content?.find(b => b.type === "text")?.text ||
+      (typeof d2.content === "string" ? d2.content : "") ||
+      d2.text || d2.result || d2.completion || d2.message || "";
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
@@ -1019,8 +1032,9 @@ function Praticienne({ user, onLogout }) {
   const [iaGenerated,setIaGenerated]=useState(false);
   const protocoleTextareaRef=useRef(null);
 
-  // ── MODIFICATION 3 : état pour les notifs lues ──
-  const [clearedActivity,setClearedActivity]=useState([]);
+  // ── MODIFICATION 3 : état pour les notifs lues (persisté localStorage) ──
+  const [clearedActivity,setClearedActivity]=useState(()=>{try{return JSON.parse(localStorage.getItem("cleared_notifs")||"[]");}catch{return[];}});
+  useEffect(()=>{try{localStorage.setItem("cleared_notifs",JSON.stringify(clearedActivity));}catch{};},[clearedActivity]);
 
   const showToast=useCallback((msg)=>setToast(msg),[]);
   const getDefaultTitre=(prenom,nb)=>`Protocole n°${nb+1} — ${prenom}`;
@@ -1104,7 +1118,7 @@ function Praticienne({ user, onLogout }) {
 
   // ── MODIFICATION 3 : nombre de notifs non lues (hors cleared) ──
   const visibleActivity = recentActivity.filter(a => !clearedActivity.includes(a.id));
-  const unreadCount = visibleActivity.length > seenCount ? visibleActivity.length - seenCount : 0;
+  const unreadCount = visibleActivity.length;
 
   if(loading)return<div style={{minHeight:"100vh",background:P.pBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:20,color:P.pTextDim,fontWeight:300}}>Chargement…</p></div>;
 
@@ -1125,7 +1139,7 @@ function Praticienne({ user, onLogout }) {
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
             {/* ── MODIFICATION 3 : cloche avec bouton "Tout effacer" ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>{setSeenCount(visibleActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 🔔{unreadCount>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{unreadCount}</span>}
               </button>
               {showNotifPanel&&(
