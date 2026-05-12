@@ -897,23 +897,34 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
     ].filter(Boolean).join("\n");
   })() : "Pas encore de suivi rempli.";
 
-  // Extraire les public_ids Cloudinary depuis les URLs
-  const extractPublicId = (url) => {
-    try {
-      const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
-      return match ? match[1] : null;
-    } catch { return null; }
-  };
-
-  const bilanPublicIds = bilans.map(b => ({
-    publicId: extractPublicId(b.url),
-    name: b.name,
-    type: b.type,
-    url: b.url,
-  })).filter(b => b.publicId);
-
   const SYSTEM_CLIENT = getSystemClient(selected.prenom);
   const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
+
+  // Lire les bilans côté client et convertir en base64
+  setIaStep("Chargement des bilans…");
+  const docsContent = [];
+  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes("/raw/upload/")).slice(0, 3);
+  const images = bilans.filter(b => b.type?.includes("image") || b.url?.includes("/image/upload/")).slice(0, 2);
+
+  for (const bilan of [...pdfs, ...images]) {
+    try {
+      const r = await fetch(bilan.url);
+      if (!r.ok) continue;
+      const blob = await r.blob();
+      const b64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      });
+      const isPdf = bilan.type?.includes("pdf") || bilan.url?.includes("/raw/upload/");
+      if (isPdf) {
+        docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: bilan.name || "Bilan" });
+      } else {
+        docsContent.push({ type: "image", source: { type: "base64", media_type: bilan.type || "image/jpeg", data: b64 } });
+      }
+    } catch { continue; }
+  }
 
   try {
     setIaStep("Génération du protocole cliente…");
@@ -944,16 +955,20 @@ async function genererProtocolesIA({ selected, documents, anamneses, entries, pr
       }
     };
 
-    const protocoleCliente = await callIA(SYSTEM_CLIENT,
-      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.`
-    );
+    const texteClient = [
+      { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
+      ...docsContent,
+    ];
+    const protocoleCliente = await callIA(SYSTEM_CLIENT, texteClient);
 
-    if (!protocoleCliente) { setIaError("Protocole cliente vide — vérifie les logs Vercel."); setIaLoading(false); return; }
+    if (!protocoleCliente) { setIaError("Protocole cliente vide — vérifie la clé API dans Vercel."); setIaLoading(false); return; }
 
     setIaStep("Génération du protocole praticienne…");
-    const protocolePraticienne = await callIA(SYSTEM_PRAT,
-      `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.`
-    );
+    const textePrat = [
+      { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse complète :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé avec normes fonctionnelles.` },
+      ...docsContent,
+    ];
+    const protocolePraticienne = await callIA(SYSTEM_PRAT, textePrat);
 
     setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
 
