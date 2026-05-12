@@ -1,4 +1,4 @@
-// api/claude.js — version sans bilans pour tester
+// api/claude.js — Vercel serverless function
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
+        "x-api-key": process.env.ANTHROPIC_KEY,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
