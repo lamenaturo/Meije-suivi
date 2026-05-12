@@ -31,7 +31,7 @@ const initForm = () => ({
   // Étape 1 — Infos générales
   profession: "", situationFamiliale: "",
   // Motif
-  problematique: "", dureeProbleme: "", impactVieQuotidienne: "",
+  pourquoiNaturo: "", problematique: "", dureeProbleme: "", impactVieQuotidienne: "",
   dejaTente: "", objectifs3mois: "",
   // Étape 2 — Antécédents
   maladiesChroniques: "", chirurgies: "", hospitalisations: "",
@@ -252,6 +252,7 @@ Situation familiale : ${val(form.situationFamiliale)}
 
 MOTIF DE CONSULTATION
 ─────────────────────
+Pourquoi une naturopathe : ${val(form.pourquoiNaturo)}
 Problématique principale : ${val(form.problematique)}
 Depuis combien de temps : ${val(form.dureeProbleme)}
 Impact vie quotidienne : ${val(form.impactVieQuotidienne)}
@@ -425,7 +426,41 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   const [etape, setEtape] = useState(1);
   const [form, setForm] = useState(() => existingData?.form ? { ...initForm(), ...existingData.form } : initForm());
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(!!existingData?.id);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [docs, setDocs] = useState(existingData?.bilans || []);
+
+  // Sync quand Firestore charge les données en async
+  useEffect(() => {
+    if (existingData?.bilans) setDocs(existingData.bilans);
+    if (existingData?.form) setForm(f => ({ ...initForm(), ...existingData.form }));
+    if (existingData?.id) setSaved(true);
+  }, [existingData?.id]);
+
+  const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "di45b4ymc";
+  const UPLOAD_PRESET = "meije_naturo_public";
+
+  const uploadToCloudinary = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", "meije-naturo/bilans");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    return { url: data.secure_url, name: file.name, type: file.type };
+  };
+
+  const handleUploadDocs = async (files) => {
+    setUploadingDocs(true);
+    const uploaded = [];
+    for (const f of files) {
+      try { uploaded.push(await uploadToCloudinary(f)); } catch (e) { console.error(e); }
+    }
+    setDocs(prev => [...prev, ...uploaded]);
+    setUploadingDocs(false);
+  };
+
+  const removeDoc = (idx) => setDocs(prev => prev.filter((_, i) => i !== idx));
 
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -440,7 +475,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
         date: new Date().toISOString(),
         form,
         pdfText,
-        bilans: existingData?.bilans || [],
+        bilans: docs,
       };
       if (existingData?.id) {
         await updateDoc(doc(db, "anamneses", existingData.id), data);
@@ -448,7 +483,6 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
         await addDoc(collection(db, "anamneses"), data);
       }
       setSaved(true);
-      setTimeout(() => onDone && onDone(), 1200);
     } catch (e) {
       console.error(e);
     }
@@ -495,6 +529,9 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             </Field>
 
             <SectionTitle>2. Motif de consultation</SectionTitle>
+            <Field label="Pourquoi consultes-tu une naturopathe ? Qu'est-ce qui t'a décidée à franchir le pas ?" required>
+              <Textarea value={form.pourquoiNaturo} onChange={set("pourquoiNaturo")} placeholder="Ex : j'en ai assez des traitements classiques, une amie me l'a recommandé, j'ai l'impression que mon corps essaie de me dire quelque chose..." rows={3} />
+            </Field>
             <Field label="Quelle est ta problématique principale aujourd'hui ?" required>
               <Textarea value={form.problematique} onChange={set("problematique")} placeholder="Décris-la librement..." rows={3} />
             </Field>
@@ -1041,7 +1078,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             <SectionTitle>12. Environnement & Hygiène de vie</SectionTitle>
             <Field label="Type d'habitation">
               <CheckGroup
-                options={["Appartement en ville", "Maison en ville", "Maison à la campagne", "Autre"]}
+                options={["Appartement en ville", "Appartement à la campagne", "Maison en ville", "Maison à la campagne", "Autre"]}
                 value={form.typeHabitation} onChange={set("typeHabitation")} columns={2}
               />
             </Field>
@@ -1204,25 +1241,72 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
               <Textarea value={form.questions} onChange={set("questions")} placeholder="N'hésite pas !" rows={2} />
             </Field>
 
+            {/* Upload de documents */}
+            <SectionTitle>📎 Tes documents & bilans</SectionTitle>
+            <p style={{ color: C.textMid, fontSize: 13, marginBottom: 12, lineHeight: 1.6 }}>
+              Tu peux joindre tes bilans sanguins, analyses, ordonnances ou tout autre document utile directement ici.
+            </p>
+            {docs.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                {docs.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px" }}>
+                    <a href={d.url} target="_blank" rel="noreferrer" style={{ color: C.terra, fontSize: 13, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      📄 {d.name}
+                    </a>
+                    <button onClick={() => removeDoc(i)} style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", fontSize: 16, marginLeft: 8, padding: 2 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label style={{ display: "block", background: C.surface, border: `1px dashed ${C.terraBorder}`, borderRadius: 10, padding: "14px 18px", textAlign: "center", cursor: "pointer", color: C.textMid, fontSize: 13 }}>
+              {uploadingDocs ? "Upload en cours…" : "＋ Ajouter un document (PDF, image)"}
+              <input
+                type="file"
+                multiple
+                accept="image/*,application/pdf"
+                style={{ display: "none" }}
+                onChange={e => handleUploadDocs(Array.from(e.target.files))}
+                disabled={uploadingDocs}
+              />
+            </label>
+
             {/* Bouton de soumission */}
-            <div style={{ marginTop: 28, background: C.terraDim, border: `1px solid ${C.terraBorder}`, borderRadius: 14, padding: 20, textAlign: "center" }}>
-              <p style={{ color: C.textMid, fontSize: 13, marginBottom: 16 }}>
-                ✅ Toutes tes réponses sont confidentielles et partagées uniquement avec Meije.
+            <div style={{ marginTop: 28, background: saved ? C.sageDim : C.terraDim, border: `1px solid ${saved ? "rgba(74,122,90,0.3)" : C.terraBorder}`, borderRadius: 14, padding: 20, textAlign: "center" }}>
+              {saved && (
+                <p style={{ color: C.sage, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+                  ✓ Questionnaire enregistré — tu peux le modifier à tout moment.
+                </p>
+              )}
+              <p style={{ color: C.textMid, fontSize: 12, marginBottom: 16 }}>
+                🔒 Tes réponses sont confidentielles et partagées uniquement avec Meije.
               </p>
-              <button
-                onClick={handleSave}
-                disabled={saving || saved}
-                style={{
-                  background: saved ? C.sage : C.terra,
-                  color: "white", border: "none", borderRadius: 12,
-                  padding: "14px 32px", fontSize: 15, fontWeight: 600,
-                  cursor: saving || saved ? "default" : "pointer",
-                  fontFamily: "DM Sans, sans-serif", width: "100%",
-                  opacity: saving ? 0.7 : 1, transition: "all 0.2s",
-                }}
-              >
-                {saved ? "✓ Questionnaire envoyé !" : saving ? "Envoi en cours…" : "Envoyer mon questionnaire →"}
-              </button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{
+                    flex: 2, background: C.terra, color: "white", border: "none",
+                    borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 600,
+                    cursor: saving ? "default" : "pointer",
+                    fontFamily: "DM Sans, sans-serif", opacity: saving ? 0.7 : 1,
+                  }}
+                >
+                  {saving ? "Enregistrement…" : saved ? "💾 Mettre à jour" : "Envoyer mon questionnaire →"}
+                </button>
+                {saved && (
+                  <button
+                    onClick={onDone}
+                    style={{
+                      flex: 1, background: C.surface, color: C.textMid,
+                      border: `1px solid ${C.border2}`, borderRadius: 12,
+                      padding: "14px 20px", fontSize: 14, cursor: "pointer",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    Fermer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
