@@ -1,4 +1,4 @@
-// api/claude.js — Vercel serverless function
+// api/claude.js
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -7,13 +7,16 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch { return res.status(400).json({ error: "Invalid JSON" }); }
-  }
-  if (!body) return res.status(400).json({ error: "Empty body" });
-
   try {
+    // Lire le body brut si pas encore parsé
+    let body = req.body;
+    if (!body || typeof body === "string") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const raw = Buffer.concat(chunks).toString("utf-8");
+      try { body = JSON.parse(raw); } catch { return res.status(400).json({ error: "Invalid JSON", raw: raw.slice(0, 100) }); }
+    }
+
     const { system, messages, max_tokens } = body;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
