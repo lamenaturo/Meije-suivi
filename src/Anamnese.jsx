@@ -56,6 +56,7 @@ const initForm = () => ({
   perimenopause: "", symptomesHormonaux: [],
   grossesses: "", accouchements: "", faussesCouches: "",
   problemeFertilite: [], problemesThyroidiens: [],
+  thyroideSymptomes: [], thyroideNSP: [],
   // Étape 6 — Digestion
   transit: [], frequenceSelles: "", consistanceSelles: [],
   problemesDigestifs: [], momentSymptomesDigestifs: "",
@@ -320,6 +321,17 @@ Accouchements : ${val(form.accouchements)}
 Fausses couches/IVG : ${val(form.faussesCouches)}
 Problème fertilité : ${arr(form.problemeFertilite)}
 Problèmes thyroïdiens : ${arr(form.problemesThyroidiens)}
+
+DÉPISTAGE HYPOTHYROÏDIE FONCTIONNELLE
+──────────────────────────────────────
+Symptômes cochés (${(Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes.length : 0)}/23) :
+${Array.isArray(form.thyroideSymptomes) && form.thyroideSymptomes.length ? form.thyroideSymptomes.map(s => `  • ${s}`).join("\n") : "  Aucun"}
+${Array.isArray(form.thyroideNSP) && form.thyroideNSP.length ? `Je ne sais pas : ${form.thyroideNSP.join(", ")}` : ""}
+Score : ${Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes.length : 0}/23 → ${
+  (Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes.length : 0) <= 5 ? "Risque faible"
+  : (Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes.length : 0) <= 10 ? "Suspicion modérée — bilan thyroïdien recommandé"
+  : "Suspicion forte — consultation médicale recommandée"
+}
 
 ══════════════════════════════════════════
 6. DIGESTION & IMMUNITÉ
@@ -802,6 +814,125 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
                 value={form.problemesThyroidiens} onChange={set("problemesThyroidiens")} columns={2}
               />
             </Field>
+
+            {/* ── DÉPISTAGE HYPOTHYROÏDIE ── */}
+            {(() => {
+              const THYROIDE_SYMPTOMES = [
+                "Marbrures de la peau",
+                "Frilosité",
+                "Extrémités froides (voire Raynaud)",
+                "Raucité de voix",
+                "Prise de poids ou difficile à gérer",
+                "Fatigue dès le matin",
+                "Œdème le matin (yeux, doigts, orteils)",
+                "Température matinale basse",
+                "Courbatures musculaires",
+                "Rigidité articulaire le matin (fibromyalgie)",
+                "Peau sèche (talons, coudes, tibias)",
+                "Perte de cheveux / ongles fragiles",
+                "Cholestérol élevé avec LDL élevés",
+                "Bradypsychie (cerveau qui tourne au ralenti)",
+                "Gastroparésie (lourdeur d'estomac après repas)",
+                "Infections respiratoires / ORL à répétition",
+                "Migraines réfractaires aux traitements",
+                "Constipation",
+                "Homocystéine élevée",
+                "GOT / GPT élevés",
+                "HTA diastolique",
+                "Vitamine A basse / bêtacarotène normale",
+                "Moral instable (dépression)",
+              ];
+              const THYROIDE_NSP = [
+                "Cholestérol élevé avec LDL élevés",
+                "Homocystéine élevée",
+                "GOT / GPT élevés",
+                "HTA diastolique",
+                "Vitamine A basse / bêtacarotène normale",
+              ];
+              const checked = Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes : [];
+              const nsp = Array.isArray(form.thyroideNSP) ? form.thyroideNSP : [];
+              const score = checked.length;
+              const interp = score <= 5
+                ? { label: "Risque faible", color: C.sage, bg: C.sageDim }
+                : score <= 10
+                  ? { label: "Suspicion modérée — bilan thyroïdien recommandé", color: "#B8A05A", bg: "rgba(184,160,90,0.1)" }
+                  : { label: "Suspicion forte — consultation médicale recommandée", color: C.terra, bg: C.terraDim };
+
+              const toggleSymptome = (opt) => {
+                const cur = Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes : [];
+                set("thyroideSymptomes")(cur.includes(opt) ? cur.filter(v => v !== opt) : [...cur, opt]);
+              };
+              const toggleNSP = (opt) => {
+                const cur = Array.isArray(form.thyroideNSP) ? form.thyroideNSP : [];
+                set("thyroideNSP")(cur.includes(opt) ? cur.filter(v => v !== opt) : [...cur, opt]);
+              };
+
+              return (
+                <div style={{ marginTop: 24, background: "rgba(181,88,58,0.04)", border: `1px solid ${C.terraBorder}`, borderRadius: 14, padding: "18px 16px" }}>
+                  <p style={{ color: C.terra, fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                    🔎 Dépistage hypothyroïdie fonctionnelle
+                  </p>
+                  <p style={{ color: C.textDim, fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
+                    Coche tous les symptômes que tu présentes actuellement. Pour certains items biologiques, si tu ne sais pas, coche "Je ne sais pas".
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {THYROIDE_SYMPTOMES.map(opt => {
+                      const isChecked = checked.includes(opt);
+                      const hasNSP = THYROIDE_NSP.includes(opt);
+                      const isNSP = nsp.includes(opt);
+                      return (
+                        <div key={opt} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            onClick={() => toggleSymptome(opt)}
+                            style={{
+                              flex: 1, textAlign: "left", padding: "9px 13px", borderRadius: 8,
+                              border: `1px solid ${isChecked ? C.terra : C.border}`,
+                              background: isChecked ? C.terraDim : C.surface,
+                              color: isChecked ? C.terra : C.textMid,
+                              fontSize: 13, cursor: "pointer", fontFamily: "DM Sans, sans-serif",
+                              fontWeight: isChecked ? 600 : 400,
+                            }}
+                          >
+                            {isChecked ? "✓ " : ""}{opt}
+                          </button>
+                          {hasNSP && !isChecked && (
+                            <button
+                              onClick={() => toggleNSP(opt)}
+                              style={{
+                                padding: "9px 11px", borderRadius: 8, whiteSpace: "nowrap",
+                                border: `1px solid ${isNSP ? "#B8A05A" : C.border}`,
+                                background: isNSP ? "rgba(184,160,90,0.12)" : C.surface,
+                                color: isNSP ? "#B8A05A" : C.textDim,
+                                fontSize: 11, cursor: "pointer", fontFamily: "DM Sans, sans-serif",
+                              }}
+                            >
+                              {isNSP ? "✓ " : ""}Je ne sais pas
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Score */}
+                  <div style={{ marginTop: 18, background: interp.bg, border: `1px solid ${interp.color}33`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <p style={{ color: interp.color, fontWeight: 700, fontSize: 15 }}>
+                        {score} / 23 symptômes
+                      </p>
+                      <p style={{ color: interp.color, fontSize: 12, marginTop: 3, opacity: 0.85 }}>
+                        {interp.label}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 3 }}>
+                      {Array.from({ length: 23 }).map((_, i) => (
+                        <div key={i} style={{ width: 6, height: 22, borderRadius: 3, background: i < score ? interp.color : C.border2 }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
