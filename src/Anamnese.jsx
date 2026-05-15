@@ -725,7 +725,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
               <Input value={form.faussesCouches} onChange={set("faussesCouches")} placeholder="Si oui, combien et quand" />
             </Field>
             <Field label="Problèmes de fertilité ?">
-              <CheckGroup options={["Oui, difficulté à concevoir", "Oui, SOPK diagnostiqué", "Oui, endométriose", "Oui, autre", "Non"]} value={form.problemeFertilite} onChange={set("problemeFertilite")} />
+              <CheckGroup options={["Oui, difficulté à concevoir", "Oui, SMOP diagnostiqué", "Oui, endométriose", "Oui, autre", "Non"]} value={form.problemeFertilite} onChange={set("problemeFertilite")} />
             </Field>
             <Field label="Problèmes thyroïdiens diagnostiqués ?">
               <CheckGroup options={["Hypothyroïdie", "Hyperthyroïdie", "Hashimoto", "Nodules thyroïdiens", "Suspicion mais non diagnostiqué", "Non"]} value={form.problemesThyroidiens} onChange={set("problemesThyroidiens")} columns={2} />
