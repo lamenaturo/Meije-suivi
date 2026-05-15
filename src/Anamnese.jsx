@@ -374,22 +374,25 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   }, [existingData?.id]);
 
   // ── AUTOSAVE silencieux 1.5s après chaque changement (si doc déjà créé) ──
-  useEffect(() => {
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    if (!docId) return; // pas d'autosave avant la première création
-    const timer = setTimeout(async () => {
-      try {
-        await updateDoc(doc(db, "anamneses", docId), {
-          form, bilans: docs,
-          pdfText: generatePdfText(form, user),
-          date: new Date().toISOString(),
-        });
-      } catch (e) { console.error("Autosave:", e); }
-    }, 1500);
-    setAutoSaveTimer(timer);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, docs]);
+ useEffect(() => {
+  if (!docId) return;
+
+  const timer = setTimeout(async () => {
+    try {
+      await updateDoc(doc(db, "anamneses", docId), {
+        form,
+        bilans: docs,
+        pdfText: generatePdfText(form, user),
+        date: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Autosave:", e);
+    }
+  }, 1500);
+
+  return () => clearTimeout(timer);
+}, [form, docs, docId, user]);
+
 
   // ── Crée le doc Firestore dès le 1er passage à l'étape suivante ──
   const goToStep = async (next) => {
