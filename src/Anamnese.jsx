@@ -183,7 +183,7 @@ const SectionTitle = ({ children }) => (
   </h3>
 );
 
-// ─── PDF TEXT ─────────────────────────────────────────────────────────────────
+// ─── PDF TEXT (pour Firestore / IA) ──────────────────────────────────────────
 function generatePdfText(form, user) {
   const arr = v => Array.isArray(v) ? v.join(", ") : (v || "—");
   const val = v => v || "—";
@@ -350,6 +350,342 @@ Infos sup : ${val(form.infosSup)}
 Questions : ${val(form.questions)}`.trim();
 }
 
+// ─── GÉNÉRATION PDF TÉLÉCHARGEABLE ───────────────────────────────────────────
+async function downloadAnamnesePDF(form, user, bilans = []) {
+  // Chargement dynamique de jsPDF (pas besoin de l'installer si déjà dans node_modules)
+  let jsPDF;
+  try {
+    const mod = await import("jspdf");
+    jsPDF = mod.jsPDF || mod.default;
+  } catch {
+    alert("Impossible de générer le PDF. Vérifiez que jsPDF est installé (npm install jspdf).");
+    return;
+  }
+
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const marginL = 18;
+  const marginR = 18;
+  const pageW = 210;
+  const contentW = pageW - marginL - marginR;
+  const pageH = 297;
+  const bottomMargin = 16;
+  let y = 0;
+
+  // ── helpers ──
+  const newPage = () => {
+    pdf.addPage();
+    y = 18;
+    // Filigrane discret en bas
+    pdf.setFontSize(8);
+    pdf.setTextColor(200, 185, 170);
+    pdf.text("meije.naturo — Document confidentiel", marginL, pageH - 8);
+    pdf.text(`${pdf.internal.getNumberOfPages()}`, pageW - marginR, pageH - 8, { align: "right" });
+    pdf.setTextColor(40, 25, 12);
+  };
+
+  const checkY = (needed = 10) => {
+    if (y + needed > pageH - bottomMargin) newPage();
+  };
+
+  const addText = (text, size = 11, bold = false, color = [40, 25, 12]) => {
+    pdf.setFontSize(size);
+    pdf.setFont("helvetica", bold ? "bold" : "normal");
+    pdf.setTextColor(...color);
+    const lines = pdf.splitTextToSize(String(text || ""), contentW);
+    checkY(lines.length * (size * 0.4 + 1.2));
+    pdf.text(lines, marginL, y);
+    y += lines.length * (size * 0.4 + 1.2);
+  };
+
+  const addSection = (title) => {
+    checkY(14);
+    y += 3;
+    // Fond coloré léger
+    pdf.setFillColor(181, 88, 58, 0.12);
+    pdf.setDrawColor(181, 88, 58);
+    pdf.setLineWidth(0.3);
+    pdf.rect(marginL - 2, y - 5, contentW + 4, 8, "F");
+    pdf.line(marginL - 2, y + 3, marginL + contentW + 2, y + 3);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(181, 88, 58);
+    pdf.text(title.toUpperCase(), marginL, y);
+    pdf.setTextColor(40, 25, 12);
+    y += 7;
+  };
+
+  const addRow = (label, value) => {
+    if (!value || value === "—") return;
+    checkY(8);
+    pdf.setFontSize(9.5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(100, 70, 40);
+    pdf.text(label + " :", marginL, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(40, 25, 12);
+    const labelW = pdf.getTextWidth(label + " : ") + 1;
+    const valLines = pdf.splitTextToSize(String(value), contentW - labelW);
+    pdf.text(valLines, marginL + labelW, y);
+    y += valLines.length * 5.2 + 1;
+  };
+
+  const arr = v => Array.isArray(v) && v.length ? v.join(", ") : null;
+  const val = v => (v && v !== "") ? String(v) : null;
+
+  // ══════════════════════════════
+  // PAGE 1 — EN-TÊTE
+  // ══════════════════════════════
+  y = 22;
+
+  // Logo texte
+  pdf.setFontSize(22);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(181, 88, 58);
+  pdf.text("meije", marginL, y);
+  pdf.setTextColor(138, 90, 42);
+  pdf.text(".naturo", marginL + pdf.getTextWidth("meije"), y);
+  y += 8;
+
+  pdf.setFontSize(13);
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(100, 70, 40);
+  pdf.text("Questionnaire de santé — Anamnèse complète", marginL, y);
+  y += 6;
+
+  // Ligne de séparation
+  pdf.setDrawColor(181, 88, 58);
+  pdf.setLineWidth(0.5);
+  pdf.line(marginL, y, pageW - marginR, y);
+  y += 5;
+
+  pdf.setFontSize(9);
+  pdf.setTextColor(140, 110, 80);
+  const prenom = user?.prénom || user?.displayName || user?.email?.split("@")[0] || "";
+  const dateStr = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  pdf.text(`${prenom ? prenom + "  •  " : ""}${user?.email || ""}  •  ${dateStr}`, marginL, y);
+  y += 10;
+
+  // Filigrane page 1
+  pdf.setFontSize(8);
+  pdf.setTextColor(200, 185, 170);
+  pdf.text("meije.naturo — Document confidentiel", marginL, pageH - 8);
+  pdf.text("1", pageW - marginR, pageH - 8, { align: "right" });
+  pdf.setTextColor(40, 25, 12);
+
+  // ── 1. INFOS GÉNÉRALES ──
+  addSection("1. Informations générales & Motif");
+  addRow("Profession", val(form.profession));
+  addRow("Situation familiale", val(form.situationFamiliale));
+  addRow("Vaccin Covid", val(form.vaccinCovid));
+  if (form.vaccinCovid === "Oui") {
+    addRow("  Lequel(s)", arr(form.vaccinCovidLequel));
+    addRow("  Doses", val(form.vaccinCovidDoses));
+    addRow("  Effets secondaires", val(form.vaccinCovidEffets));
+    if (form.vaccinCovidEffets === "Oui") addRow("  Détail effets", val(form.vaccinCovidEffetsDetail));
+  }
+  addRow("Mode d'accouchement", arr(form.modeAccouchement));
+  addRow("Allaitement", val(form.allaitement));
+  addRow("Pourquoi naturopathe", val(form.pourquoiNaturo));
+  addRow("Problématique principale", val(form.problematique));
+  addRow("Depuis", val(form.dureeProbleme));
+  addRow("Impact vie quotidienne", val(form.impactVieQuotidienne));
+  addRow("Déjà essayé", val(form.dejaTente));
+  addRow("Objectifs 3 mois", val(form.objectifs3mois));
+
+  // ── 2. ANTÉCÉDENTS ──
+  addSection("2. Antécédents & Traitements");
+  addRow("Maladies chroniques", val(form.maladiesChroniques));
+  addRow("Chirurgies", val(form.chirurgies));
+  addRow("Hospitalisations", val(form.hospitalisations));
+  addRow("Allergies connues", val(form.allergiesConnues));
+  addRow("Antécédents familiaux", val(form.antecedentsFamiliaux));
+  addRow("Médicaments", val(form.medicaments));
+  addRow("Compléments actuels", val(form.complementsActuels));
+  addRow("Plantes / remèdes", val(form.plantesRemedes));
+  addRow("Autres thérapies", val(form.autresTherapies));
+  addRow("Suivi médical", arr(form.suiviMedical));
+  addRow("Médecin traitant", val(form.medecinTraitant));
+  addRow("Gynécologue", val(form.gyneco));
+
+  // ── 3. SOMMEIL & ÉNERGIE ──
+  addSection("3. Sommeil & Énergie");
+  addRow("Coucher / Lever", val(form.heureCoucher) && val(form.heureLever) ? `${form.heureCoucher} — ${form.heureLever}` : val(form.heureCoucher) || val(form.heureLever));
+  addRow("Heures de sommeil", val(form.nbreHeuresSommeil) ? form.nbreHeuresSommeil + "h" : null);
+  addRow("Qualité sommeil", val(form.qualiteSommeil) ? form.qualiteSommeil + "/10" : null);
+  addRow("Difficultés", arr(form.difficulteSommeil));
+  addRow("État au réveil", val(form.etatReveil));
+  addRow("Énergie matin", val(form.energieMatin) ? form.energieMatin + "/10" : null);
+  addRow("Énergie après-midi", val(form.energieApresMidi) ? form.energieApresMidi + "/10" : null);
+  addRow("Énergie soir", val(form.energieSoir) ? form.energieSoir + "/10" : null);
+  addRow("Baisses d'énergie", val(form.baisseEnergieMoment));
+  addRow("Café / thé par jour", val(form.cafeTasse));
+  addRow("Autres stimulants", val(form.consommationStimulants));
+  addRow("Symptômes fatigue", arr(form.symptomesFatigue));
+
+  // ── 4. STRESS ──
+  addSection("4. Stress & Santé mentale");
+  addRow("Niveau stress", val(form.niveauStress) ? form.niveauStress + "/10" : null);
+  addRow("Sources de stress", val(form.sourceStress));
+  addRow("Symptômes stress", arr(form.symptomesStress));
+  addRow("Humeur générale", arr(form.humeurGenerale));
+  addRow("Anxiété / angoisses", val(form.anxieteAngoisses));
+  addRow("Suivi psy", arr(form.suiviPsy));
+  addRow("Relaxation", val(form.techniquesRelaxation));
+  addRow("Activités ressourçantes", val(form.activitesRessourcantes));
+
+  // ── 5. HORMONES & CYCLE ──
+  addSection("5. Hormones & Cycle");
+  addRow("Âge premières règles", val(form.agePremieresRegles));
+  addRow("Régularité cycle", arr(form.regulariteCycle));
+  addRow("Durée cycle / règles", val(form.dureeCycle) && val(form.dureeRegles) ? `${form.dureeCycle}j / ${form.dureeRegles}j` : null);
+  addRow("Abondance", val(form.abondanceRegles));
+  addRow("SPM", arr(form.symptomesSPM));
+  addRow("Douleurs menstruelles", val(form.intensiteDouleurs) ? form.intensiteDouleurs + "/10" : null);
+  addRow("  Description", val(form.descriptionDouleurs));
+  addRow("Contraception", arr(form.contraception));
+  addRow("  Depuis", val(form.dureeContraception));
+  addRow("Périménopause / Ménopause", val(form.perimenopause));
+  addRow("Symptômes hormonaux", arr(form.symptomesHormonaux));
+  addRow("Grossesses / Accouchements / FC", `${val(form.grossesses) || "—"} / ${val(form.accouchements) || "—"} / ${val(form.faussesCouches) || "—"}`);
+  addRow("Fertilité", arr(form.problemeFertilite));
+  addRow("Problèmes thyroïdiens", arr(form.problemesThyroidiens));
+
+  // Score thyroïde
+  const thyScore = Array.isArray(form.thyroideSymptomes) ? form.thyroideSymptomes.length : 0;
+  const thyInterp = thyScore <= 5 ? "Risque faible" : thyScore <= 10 ? "Suspicion modérée — bilan recommandé" : "Suspicion forte — consultation médicale recommandée";
+  checkY(20);
+  y += 2;
+  const thyBg = thyScore <= 5 ? [74, 122, 90] : thyScore <= 10 ? [184, 160, 90] : [181, 88, 58];
+  pdf.setFillColor(thyBg[0], thyBg[1], thyBg[2]);
+  pdf.roundedRect(marginL, y - 4, contentW, 14, 2, 2, "F");
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(`Dépistage hypothyroïdie : ${thyScore}/23 symptômes — ${thyInterp}`, marginL + 3, y + 3);
+  pdf.setTextColor(40, 25, 12);
+  y += 16;
+  if (Array.isArray(form.thyroideSymptomes) && form.thyroideSymptomes.length > 0) {
+    addRow("Symptômes cochés", form.thyroideSymptomes.join(", "));
+  }
+
+  // ── 6. DIGESTION & IMMUNITÉ ──
+  addSection("6. Digestion & Immunité");
+  addRow("Transit", arr(form.transit));
+  addRow("Fréquence selles", val(form.frequenceSelles));
+  addRow("Consistance", arr(form.consistanceSelles));
+  addRow("Problèmes digestifs", arr(form.problemesDigestifs));
+  addRow("Moment symptômes", val(form.momentSymptomesDigestifs));
+  addRow("Intolérances", arr(form.intolerancesAlimentaires));
+  addRow("Aliments problématiques", val(form.alimentsProblematiques));
+  addRow("Tests intolerances", val(form.testsIntolerances));
+  addRow("Antécédents digestifs", arr(form.antecedentsDigestifs));
+  addRow("Antibiotiques récents", arr(form.antibiotiquesRecents));
+  addRow("Maladies par an / récup.", val(form.nbFoisMaladeAn) || val(form.dureeRecuperationInfection) ? `${form.nbFoisMaladeAn || "—"} fois — ${form.dureeRecuperationInfection || "—"}` : null);
+  addRow("Infections récurrentes", arr(form.infectionsRecurrentes));
+  addRow("Maladies auto-immunes", arr(form.maladiesAutoImmunes));
+  addRow("Inflammations", arr(form.inflammationsChroniques));
+  addRow("Peau", arr(form.problemesPeau));
+  addRow("Allergies", arr(form.allergies));
+
+  // ── 7. ALIMENTATION ──
+  addSection("7. Alimentation & Hydratation");
+  addRow("Régime alimentaire", arr(form.regimeAlimentaire));
+  addRow("Depuis", val(form.dureeRegime));
+  addRow("Repas / collations par jour", val(form.nbRepasJour) || val(form.nbCollations) ? `${form.nbRepasJour || "—"} repas, ${form.nbCollations || "—"} collation(s)` : null);
+  addRow("Petit-déjeuner", val(form.petitDejeuner));
+  addRow("  Type", val(form.petitDejType));
+  addRow("Déjeuner type", val(form.dejeunerType));
+  addRow("Dîner type", val(form.dinerType));
+  addRow("Collations", val(form.collationsType));
+  addRow("Dernier repas", val(form.heureDernierRepas));
+  addRow("Tabac", val(form.tabacStatut) + (form.tabacStatut === "Oui" ? ` — ${form.tabacQuantite || "?"}` : ""));
+  addRow("Alcool", val(form.alcool));
+  addRow("Produits ultra-transformés", val(form.prodUltraTransforme));
+  addRow("Sucre", val(form.consommationSucre) ? form.consommationSucre + "/10 — " + (form.typesSucres || "") : null);
+  addRow("Laitiers", val(form.consommationLaitiers) ? form.consommationLaitiers + "/10 — " + (form.typesLaitiers || "") : null);
+  addRow("Gluten", val(form.consommationGluten) ? form.consommationGluten + "/10 — " + (form.produitsGluten || "") : null);
+  addRow("Fruits / légumes par jour", val(form.portionsFruits) || val(form.portionsLegumes) ? `${form.portionsFruits || "—"} fruits / ${form.portionsLegumes || "—"} légumes` : null);
+  addRow("Protéines animales", arr(form.proteinesAnimales));
+  addRow("Protéines végétales", val(form.proteinesVegetales));
+  addRow("Eau par jour", val(form.quantiteEau));
+  addRow("Autres boissons", arr(form.autresBoissons));
+  addRow("Habitudes alimentaires", arr(form.habitudesAlimentaires));
+  addRow("Appétit", val(form.niveauAppetit) ? form.niveauAppetit + "/10" : null);
+  addRow("Envies alimentaires", val(form.enviesAliments));
+  addRow("Contexte repas", arr(form.contextRepas));
+
+  // ── 8. ACTIVITÉ & ENVIRONNEMENT ──
+  addSection("8. Activité physique & Environnement");
+  addRow("Niveau activité", val(form.niveauActivite));
+  addRow("Types d'activité", val(form.typesActivite));
+  addRow("Fréquence / durée / intensité", [val(form.frequenceActivite), val(form.dureeSeance), val(form.intensiteActivite)].filter(Boolean).join(" — ") || null);
+  addRow("Heures assis par jour", val(form.heuresAssis));
+  addRow("Crampes après effort", val(form.crampesEffort));
+  addRow("Ressenti après sport", arr(form.ressentiApresActivite));
+  addRow("Limitations physiques", val(form.limitationsPhysiques));
+  addRow("Souhait activité", arr(form.souhaitActivite));
+  addRow("Type d'habitation", arr(form.typeHabitation));
+  addRow("Environnement", arr(form.qualiteEnvironnement));
+  addRow("Temps extérieur / écrans", val(form.tempsExterieur) || val(form.heuresEcrans) ? `${form.tempsExterieur || "—"} dehors / ${form.heuresEcrans || "—"} écrans` : null);
+  addRow("Exposition professionnelle", arr(form.expositionPro));
+  addRow("Tabac environnement", arr(form.tabac));
+  addRow("Produits quotidiens", arr(form.produitsQuotidiens));
+  addRow("Plastique / aliments", val(form.plastiqueAliments));
+
+  // ── 9. AUTRES SYSTÈMES ──
+  addSection("9. Autres systèmes & Examens");
+  addRow("Vision", arr(form.vision));
+  addRow("Audition", arr(form.audition));
+  addRow("État bucco-dentaire", arr(form.etatDents));
+  addRow("ORL", arr(form.problemesORL));
+  addRow("Cardiovasculaire", arr(form.systemCardioVasculaire));
+  addRow("Urinaire", arr(form.systemeUrinaire));
+  addRow("Température corporelle", arr(form.temperatureCorporelle));
+  addRow("Autres symptômes", val(form.autresSymptomes));
+  addRow("Analyses sanguines récentes", val(form.analysesSanguinesRecentes));
+  addRow("Dernier bilan", val(form.dateLastBilan));
+  addRow("Éléments remarquables", val(form.elementsRemarquables));
+  addRow("Analyses spécifiques", arr(form.analysesSpecifiques));
+  addRow("Autres examens", val(form.autresExamens));
+
+  // ── 10. MOTIVATION ──
+  addSection("10. Motivation & Conclusion");
+  addRow("Vision dans 6 mois", val(form.visionDans6Mois));
+  addRow("Motivation", val(form.motivationChangement) ? form.motivationChangement + "/10" : null);
+  addRow("Freins", val(form.freins));
+  addRow("Attentes", val(form.attentesNaturopathe));
+  addRow("Prête à", arr(form.pret));
+  addRow("Informations supplémentaires", val(form.infosSup));
+  addRow("Questions", val(form.questions));
+
+  // ── BILANS JOINTS ──
+  if (bilans && bilans.length > 0) {
+    addSection("Documents & Bilans joints");
+    bilans.forEach((b, i) => {
+      addRow(`Document ${i + 1}`, b.name || b.url);
+    });
+    checkY(8);
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(140, 110, 80);
+    pdf.text("Les fichiers sont accessibles via l'espace de suivi meije.naturo", marginL, y);
+    y += 6;
+  }
+
+  // ── PIED DE PAGE TOUTES PAGES ──
+  const totalPages = pdf.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(8);
+    pdf.setTextColor(200, 185, 170);
+    pdf.text("meije.naturo — Document confidentiel", marginL, pageH - 8);
+    pdf.text(String(i), pageW - marginR, pageH - 8, { align: "right" });
+  }
+
+  // ── TÉLÉCHARGEMENT ──
+  const nomFichier = `anamnese_${(prenom || "cliente").toLowerCase().replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  pdf.save(nomFichier);
+}
+
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────────
 export default function Anamnese({ user, onDone, readonly = false, existingData = null }) {
   const [etape, setEtape] = useState(1);
@@ -361,7 +697,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [docs, setDocs] = useState(existingData?.bilans || []);
   const [docId, setDocId] = useState(existingData?.id || null);
-  const [autoSaveTimer, setAutoSaveTimer] = useState(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const CLOUD_NAME_ENV = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "di45b4ymc";
   const UPLOAD_PRESET = "meije_naturo_public";
@@ -373,26 +709,20 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
     if (existingData?.id) { setSaved(true); setDocId(existingData.id); }
   }, [existingData?.id]);
 
-  // ── AUTOSAVE silencieux 1.5s après chaque changement (si doc déjà créé) ──
- useEffect(() => {
-  if (!docId) return;
-
-  const timer = setTimeout(async () => {
-    try {
-      await updateDoc(doc(db, "anamneses", docId), {
-        form,
-        bilans: docs,
-        pdfText: generatePdfText(form, user),
-        date: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.error("Autosave:", e);
-    }
-  }, 1500);
-
-  return () => clearTimeout(timer);
-}, [form, docs, docId, user]);
-
+  // ── AUTOSAVE silencieux 1.5s après chaque changement ──
+  useEffect(() => {
+    if (!docId) return;
+    const timer = setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, "anamneses", docId), {
+          form, bilans: docs,
+          pdfText: generatePdfText(form, user),
+          date: new Date().toISOString(),
+        });
+      } catch (e) { console.error("Autosave:", e); }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [form, docs, docId, user]);
 
   // ── Crée le doc Firestore dès le 1er passage à l'étape suivante ──
   const goToStep = async (next) => {
@@ -434,7 +764,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
 
   const removeDoc = idx => setDocs(prev => prev.filter((_, i) => i !== idx));
 
-  // ── Sauvegarde manuelle (bouton final) ──
+  // ── Sauvegarde manuelle ──
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -456,9 +786,35 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
     setSaving(false);
   };
 
+  // ── Téléchargement PDF ──
+  const handleDownloadPdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      await downloadAnamnesePDF(form, user, docs);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la génération du PDF.");
+    }
+    setGeneratingPdf(false);
+  };
+
   if (readonly && existingData) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", padding: 24, fontFamily: "DM Sans, sans-serif" }}>
+        {/* Bouton téléchargement en mode lecture */}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={async () => {
+              setGeneratingPdf(true);
+              try { await downloadAnamnesePDF(existingData.form || {}, { email: existingData.userEmail, prénom: existingData.userPrenom }, existingData.bilans || []); }
+              catch (e) { console.error(e); }
+              setGeneratingPdf(false);
+            }}
+            disabled={generatingPdf}
+            style={{ background: C.terra, color: "white", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif", opacity: generatingPdf ? 0.7 : 1 }}>
+            {generatingPdf ? "Génération…" : "⬇ Télécharger le PDF"}
+          </button>
+        </div>
         <pre style={{ color: C.textMid, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
           {generatePdfText(existingData.form || {}, { email: existingData.userEmail })}
         </pre>
@@ -1070,10 +1426,13 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
                 onChange={e => handleUploadDocs(Array.from(e.target.files))} disabled={uploadingDocs} />
             </label>
 
-            <div style={{ marginTop: 28, background: saved ? C.sageDim : C.terraDim, border: `1px solid ${saved ? "rgba(74,122,90,0.3)" : C.terraBorder}`, borderRadius: 14, padding: 20, textAlign: "center" }}>
+            {/* ── ZONE ACTIONS FINALE ── */}
+            <div style={{ marginTop: 28, background: saved ? C.sageDim : C.terraDim, border: `1px solid ${saved ? "rgba(74,122,90,0.3)" : C.terraBorder}`, borderRadius: 14, padding: 20 }}>
               {saved && <p style={{ color: C.sage, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>✓ Questionnaire enregistré — tu peux le modifier à tout moment.</p>}
               <p style={{ color: C.textMid, fontSize: 12, marginBottom: 16 }}>🔒 Tes réponses sont confidentielles et partagées uniquement avec Meije.</p>
-              <div style={{ display: "flex", gap: 10 }}>
+
+              {/* Boutons principaux */}
+              <div style={{ display: "flex", gap: 10, marginBottom: saved ? 12 : 0 }}>
                 <button onClick={handleSave} disabled={saving}
                   style={{ flex: 2, background: C.terra, color: "white", border: "none", borderRadius: 12, padding: "14px 20px", fontSize: 15, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "DM Sans, sans-serif", opacity: saving ? 0.7 : 1 }}>
                   {saving ? "Enregistrement…" : saved ? "💾 Mettre à jour" : "Envoyer mon questionnaire →"}
@@ -1085,6 +1444,25 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
                   </button>
                 )}
               </div>
+
+              {/* Bouton téléchargement PDF — visible seulement si enregistré */}
+              {saved && (
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={generatingPdf}
+                  style={{
+                    width: "100%", background: "transparent",
+                    color: C.sage, border: `1px solid ${C.sage}`,
+                    borderRadius: 12, padding: "11px 20px",
+                    fontSize: 14, fontWeight: 500, cursor: generatingPdf ? "default" : "pointer",
+                    fontFamily: "DM Sans, sans-serif", opacity: generatingPdf ? 0.6 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}>
+                  {generatingPdf
+                    ? "⏳ Génération du PDF…"
+                    : "⬇ Télécharger mon questionnaire en PDF"}
+                </button>
+              )}
             </div>
           </div>
         )}
