@@ -154,10 +154,15 @@ const downloadAnamnesePDF = (anamnese, prenom) => {
 <pre>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
 </body>
 </html>`;
-  const win = window.open("", "_blank");
-  win.document.write(html);
-  win.document.close();
-  win.onload = () => { win.focus(); win.print(); };
+ const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `anamnese_${(prenom || "cliente").toLowerCase().replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 const GLOBAL_CSS = `
