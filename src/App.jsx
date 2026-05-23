@@ -5,8 +5,6 @@ import { auth, db } from "./firebase";
 import Anamnese from "./Anamnese";
 import { getSystemClient, getSystemPraticienne } from "./normes";
 
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-
 const PRATICIENNE_EMAIL = process.env.REACT_APP_PRATICIENNE_EMAIL || "lamenaturo@gmail.com";
 const INSTAGRAM = process.env.REACT_APP_INSTAGRAM || "https://www.instagram.com/meije.naturo";
 const CLOUD_NAME = "di45b4ymc";
@@ -16,12 +14,10 @@ const EMAILJS_TEMPLATE = "template_3w471uo";
 const EMAILJS_TEMPLATE_BIENVENUE = "template_im5mm8v";
 const EMAILJS_PUBLIC = "zpxiv3rkIbtfdqAQ6";
 
-// ─── CORRECTION URLS PDF CLOUDINARY ─────────────────────────────────────────
 const fixPdfUrl = (url) => url;
 
-
-
 const PHASES_CYCLE = ["Menstruelle", "Folliculaire", "Ovulation", "Lutéale", "Je ne sais pas"];
+const JOURS_SEMAINE = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
 const TI = [
   { key: "sommeil", label: "Sommeil", icon: "🌙", question: "Comment as-tu dormi cette semaine ?" },
@@ -33,59 +29,153 @@ const TI = [
   { key: "alimentation", label: "Alimentation", icon: "🥗", question: "Comment as-tu mangé cette semaine ?" },
   { key: "peau", label: "Peau", icon: "✨", question: "Comment va ta peau cette semaine ?" },
   { key: "poids", label: "Poids / Rétention", icon: "⚖️", question: "Comment tu te sens dans ton corps cette semaine ?" },
+  { key: "hydratation", label: "Hydratation", icon: "💧", question: "Tu as bien bu cette semaine ?" },
+  { key: "activite", label: "Activité physique", icon: "🏃", question: "Comment s'est passée ton activité physique ?" },
 ];
 
-// ─── PROFILS ET SOUS-PROFILS ─────────────────────────────────────────────────
+// ─── QUESTIONS SPÉCIFIQUES PAR PROFIL ────────────────────────────────────────
+const QUESTIONS_PROFIL = {
+  sopk: [
+    { key: "sopk_douleurs_pelv", label: "Douleurs pelviennes", icon: "🔥", question: "As-tu eu des douleurs pelviennes cette semaine ?", type: "scale" },
+    { key: "sopk_acne", label: "Acné", icon: "✨", question: "Comment est ton acné cette semaine ?", type: "scale" },
+    { key: "sopk_pilosite", label: "Pilosité / Calvitie", icon: "🪞", question: "As-tu remarqué des changements de pilosité ?", type: "text" },
+    { key: "sopk_retention", label: "Poids / Rétention", icon: "⚖️", question: "Ressens-tu de la rétention ou des changements de poids ?", type: "scale" },
+    { key: "sopk_libido", label: "Libido", icon: "💫", question: "Comment est ta libido cette semaine ?", type: "scale" },
+    { key: "sopk_fringales", label: "Fringales de sucre", icon: "🍬", question: "As-tu eu des fringales de sucre ?", type: "scale" },
+    { key: "sopk_transit", label: "Transit", icon: "🌿", question: "Comment est ton transit cette semaine ?", type: "scale" },
+  ],
+  spm: [
+    { key: "spm_douleurs", label: "Douleurs J1-J2", icon: "🔥", question: "Intensité des douleurs menstruelles (J1-J2) ?", type: "scale" },
+    { key: "spm_seins", label: "Seins douloureux", icon: "💫", question: "Tes seins sont-ils gonflés ou douloureux ?", type: "oui_non" },
+    { key: "spm_irritabilite", label: "Irritabilité", icon: "🌊", question: "Comment est ton niveau d'irritabilité ?", type: "scale" },
+    { key: "spm_fringales", label: "Fringales", icon: "🍬", question: "Fringales (sucre / sel) ?", type: "scale" },
+    { key: "spm_maux_tete", label: "Maux de tête", icon: "💆", question: "As-tu eu des maux de tête ?", type: "oui_non" },
+    { key: "spm_retention", label: "Rétention d'eau", icon: "⚖️", question: "Ressens-tu de la rétention d'eau / ballonnements ?", type: "scale" },
+    { key: "spm_sommeil_pre", label: "Sommeil pré-règles", icon: "🌙", question: "Comment est ton sommeil en phase pré-menstruelle ?", type: "scale" },
+  ],
+  endometriose: [
+    { key: "endo_douleurs", label: "Douleurs pelviennes", icon: "🔥", question: "Intensité des douleurs pelviennes (1-5) ?", type: "scale" },
+    { key: "endo_localisation", label: "Localisation douleurs", icon: "📍", question: "Où se situent les douleurs exactement ?", type: "text" },
+    { key: "endo_selles", label: "Douleurs à la selle", icon: "🌿", question: "As-tu des douleurs lors des selles ?", type: "oui_non" },
+    { key: "endo_fatigue", label: "Fatigue post-douleur", icon: "⚡", question: "Fatigue ressentie après les douleurs ?", type: "scale" },
+    { key: "endo_inflammation", label: "Inflammation ressentie", icon: "🔥", question: "Ressens-tu de l'inflammation dans le corps ?", type: "scale" },
+    { key: "endo_impact_vie", label: "Impact vie quotidienne", icon: "🏠", question: "As-tu pu travailler / sortir normalement ?", type: "text" },
+    { key: "endo_transit", label: "Transit", icon: "🌿", question: "Comment est ton transit cette semaine ?", type: "scale" },
+  ],
+  fertilite: [
+    { key: "fert_temp", label: "Température basale", icon: "🌡️", question: "Ta température basale ce matin (°C) ?", type: "text" },
+    { key: "fert_glaire", label: "Glaire cervicale", icon: "💧", question: "Description de ta glaire cervicale ?", type: "text" },
+    { key: "fert_libido", label: "Libido", icon: "💫", question: "Comment est ta libido cette semaine ?", type: "scale" },
+    { key: "fert_stress_cycle", label: "Stress lié au cycle", icon: "😮‍💨", question: "Niveau de stress lié au cycle / fertilité ?", type: "scale" },
+    { key: "fert_humeur", label: "Humeur générale", icon: "🌊", question: "Comment est ton humeur cette semaine ?", type: "scale" },
+    { key: "fert_transit", label: "Transit", icon: "🌿", question: "Comment est ton transit ?", type: "scale" },
+  ],
+  menopause: [
+    { key: "meno_bouffees", label: "Bouffées de chaleur", icon: "🌡️", question: "Combien de bouffées de chaleur par jour ?", type: "text" },
+    { key: "meno_sueurs", label: "Sueurs nocturnes", icon: "🌙", question: "As-tu eu des sueurs nocturnes ?", type: "oui_non" },
+    { key: "meno_secheresse", label: "Sécheresse vaginale/peau", icon: "💧", question: "Ressens-tu de la sécheresse (vaginale ou cutanée) ?", type: "scale" },
+    { key: "meno_humeur", label: "Humeur", icon: "🌊", question: "Comment est ton humeur cette semaine ?", type: "scale" },
+    { key: "meno_libido", label: "Libido", icon: "💫", question: "Comment est ta libido ?", type: "scale" },
+    { key: "meno_articulations", label: "Douleurs articulaires", icon: "🦴", question: "As-tu des douleurs articulaires ?", type: "oui_non" },
+    { key: "meno_memoire", label: "Mémoire / Concentration", icon: "🧠", question: "Comment est ta mémoire et ta concentration ?", type: "scale" },
+  ],
+  fatigue: [
+    { key: "fat_energie_matin", label: "Énergie matin", icon: "🌅", question: "Ton niveau d'énergie au réveil ?", type: "scale" },
+    { key: "fat_energie_apm", label: "Énergie après-midi", icon: "☀️", question: "Ton niveau d'énergie en après-midi ?", type: "scale" },
+    { key: "fat_energie_soir", label: "Énergie soir", icon: "🌆", question: "Ton niveau d'énergie en soirée ?", type: "scale" },
+    { key: "fat_recuperation", label: "Récupération", icon: "💪", question: "Ta récupération après un effort ?", type: "scale" },
+    { key: "fat_brouillard", label: "Brouillard mental", icon: "🧠", question: "As-tu du brouillard mental / difficultés de concentration ?", type: "scale" },
+    { key: "fat_douleurs_musc", label: "Douleurs musculaires", icon: "🔥", question: "Niveau de douleurs musculaires ?", type: "scale" },
+    { key: "fat_repos", label: "Temps de repos", icon: "🛋️", question: "Combien d'heures passées allongée / au repos ?", type: "text" },
+    { key: "fat_post_exertion", label: "Post-exertion", icon: "⚡", question: "Te sens-tu pire après un effort physique ou mental ?", type: "oui_non" },
+    { key: "fat_appetit", label: "Appétit", icon: "🥗", question: "Comment est ton appétit cette semaine ?", type: "scale" },
+  ],
+  surmenage: [
+    { key: "sur_charge", label: "Charge mentale", icon: "🧠", question: "Comment est ta charge mentale cette semaine ?", type: "scale" },
+    { key: "sur_deconnexion", label: "Capacité à déconnecter", icon: "📴", question: "Arrives-tu à déconnecter du travail / des obligations ?", type: "scale" },
+    { key: "sur_tensions", label: "Tensions physiques", icon: "💆", question: "Où ressens-tu des tensions physiques ?", type: "text" },
+    { key: "sur_ecrans", label: "Temps d'écrans", icon: "📱", question: "Combien d'heures d'écrans par jour en moyenne ?", type: "text" },
+    { key: "sur_accomplissement", label: "Sentiment d'accomplissement", icon: "✅", question: "Te sens-tu accomplie cette semaine ?", type: "scale" },
+    { key: "sur_relations", label: "Relations sociales", icon: "👥", question: "As-tu pu voir des proches / t'es-tu sentie isolée ?", type: "scale" },
+  ],
+  poids_general: [
+    { key: "poids_appetit", label: "Appétit", icon: "🥗", question: "Comment est ton appétit cette semaine ?", type: "scale" },
+    { key: "poids_fringales", label: "Fringales", icon: "🍬", question: "As-tu eu des fringales ? Lesquelles ?", type: "text" },
+    { key: "poids_retention", label: "Rétention d'eau", icon: "⚖️", question: "Ressens-tu de la rétention d'eau / gonflements ?", type: "scale" },
+    { key: "poids_activite", label: "Activité physique", icon: "🏃", question: "Quelle activité physique cette semaine ? Durée ?", type: "text" },
+    { key: "poids_emotionnel", label: "Alimentation émotionnelle", icon: "💭", question: "As-tu mangé sous l'effet des émotions ?", type: "oui_non" },
+    { key: "poids_restriction", label: "Cycles restriction/excès", icon: "🔄", question: "As-tu alterné restriction et excès alimentaires ?", type: "oui_non" },
+    { key: "poids_rapport_corps", label: "Rapport au corps", icon: "🪞", question: "Comment te sens-tu dans ton corps cette semaine ?", type: "text" },
+  ],
+  retention: [
+    { key: "ret_gonflement", label: "Gonflements", icon: "⚖️", question: "Où ressens-tu des gonflements ? (jambes, ventre, visage…)", type: "text" },
+    { key: "ret_alimentation", label: "Sel / Sucre consommés", icon: "🥗", question: "As-tu consommé beaucoup de sel ou de sucre ?", type: "scale" },
+    { key: "ret_eau", label: "Hydratation", icon: "💧", question: "As-tu bien bu de l'eau cette semaine ?", type: "scale" },
+  ],
+  digestif: [
+    { key: "dig_transit", label: "Transit", icon: "🌿", question: "Comment est ton transit ? (normal, constipation, diarrhées)", type: "text" },
+    { key: "dig_ballonnements", label: "Ballonnements", icon: "💨", question: "Niveau de ballonnements ?", type: "scale" },
+    { key: "dig_douleurs_repas", label: "Douleurs après repas", icon: "🔥", question: "As-tu des douleurs / gêne après les repas ?", type: "oui_non" },
+    { key: "dig_aliments", label: "Aliments déclencheurs", icon: "🥗", question: "As-tu identifié des aliments qui déclenchent des symptômes ?", type: "text" },
+    { key: "dig_bristol", label: "Consistance selles (Bristol)", icon: "📊", question: "Type de selles cette semaine (échelle de Bristol 1-7) ?", type: "text" },
+    { key: "dig_dernier_repas", label: "Heure dernier repas", icon: "🕐", question: "À quelle heure mange-tu ton dernier repas ?", type: "text" },
+    { key: "dig_mastication", label: "Mastication / Vitesse", icon: "🍽️", question: "Manges-tu rapidement ou lentement ?", type: "text" },
+  ],
+  peau_profil: [
+    { key: "peau_etat", label: "État peau général", icon: "✨", question: "Comment est l'état général de ta peau cette semaine ?", type: "scale" },
+    { key: "peau_acne", label: "Poussées d'acné", icon: "🔍", question: "As-tu eu des poussées d'acné ? Où ?", type: "text" },
+    { key: "peau_alim", label: "Lien alimentation/peau", icon: "🥗", question: "As-tu remarqué un lien entre ce que tu as mangé et ta peau ?", type: "text" },
+    { key: "peau_stress", label: "Lien stress/peau", icon: "😮‍💨", question: "Le stress a-t-il impacté ta peau cette semaine ?", type: "oui_non" },
+    { key: "peau_hydratation", label: "Hydratation", icon: "💧", question: "Combien de verres d'eau par jour ?", type: "text" },
+    { key: "peau_cycle", label: "Lien cycle/peau", icon: "🌸", question: "Ta peau change-t-elle selon la phase du cycle ?", type: "text" },
+    { key: "peau_produits", label: "Produits utilisés", icon: "🧴", question: "Quels produits as-tu utilisé sur ta peau cette semaine ?", type: "text" },
+    { key: "peau_soleil", label: "Exposition soleil", icon: "☀️", question: "T'es-tu exposée au soleil cette semaine ?", type: "oui_non" },
+  ],
+  mental: [
+    { key: "ment_stress", label: "Niveau de stress", icon: "😮‍💨", question: "Ton niveau de stress global cette semaine ?", type: "scale" },
+    { key: "ment_ruminations", label: "Ruminations", icon: "🌀", question: "As-tu eu des pensées répétitives / ruminations ?", type: "scale" },
+    { key: "ment_angoisses", label: "Crises d'angoisse", icon: "💨", question: "Combien de crises d'angoisse cette semaine ?", type: "text" },
+    { key: "ment_relaxation", label: "Techniques de relaxation", icon: "🧘", question: "As-tu pratiqué des techniques de relaxation ? Lesquelles ?", type: "text" },
+    { key: "ment_relations", label: "Qualité des relations", icon: "👥", question: "Comment sont tes relations sociales cette semaine ?", type: "scale" },
+    { key: "ment_controle", label: "Sentiment de contrôle", icon: "🎯", question: "Te sens-tu en contrôle de ta vie / tes émotions ?", type: "scale" },
+  ],
+  sommeil_profil: [
+    { key: "som_endormissement", label: "Endormissement", icon: "🌙", question: "As-tu du mal à t'endormir ?", type: "scale" },
+    { key: "som_reveils", label: "Réveils nocturnes", icon: "⏰", question: "Combien de réveils nocturnes ?", type: "text" },
+    { key: "som_qualite", label: "Qualité du sommeil", icon: "💤", question: "Ton sommeil est-il récupérateur ?", type: "scale" },
+    { key: "som_cauchemars", label: "Cauchemars", icon: "😨", question: "As-tu eu des cauchemars ?", type: "oui_non" },
+    { key: "som_heure_coucher", label: "Heure de coucher", icon: "🕐", question: "À quelle heure t'es-tu couchée en moyenne ?", type: "text" },
+  ],
+};
 
 const PROFILS = [
-  {
-    groupe: "Cycle hormonal",
-    sousProfiles: [
-      { key: "spm", label: "SPM", priorites: ["humeur", "anxiete", "douleurs", "sommeil", "energie"] },
-      { key: "sopk", label: "SOPK", priorites: ["energie", "douleurs", "alimentation", "poids", "sommeil"] },
-      { key: "endometriose", label: "Endométriose", priorites: ["douleurs", "energie", "humeur", "sommeil"] },
-      { key: "fertilite", label: "Fertilité", priorites: ["alimentation", "anxiete", "energie", "sommeil"] },
-      { key: "menopause", label: "Ménopause", priorites: ["sommeil", "humeur", "anxiete", "energie", "douleurs"] },
-    ]
-  },
-  {
-    groupe: "Énergie & Fatigue",
-    sousProfiles: [
-      { key: "fatigue", label: "Fatigue chronique", priorites: ["energie", "sommeil", "alimentation", "digestion", "humeur"] },
-      { key: "surmenage", label: "Surmenage", priorites: ["energie", "anxiete", "sommeil", "alimentation", "humeur"] },
-    ]
-  },
-  {
-    groupe: "Poids & Corps",
-    sousProfiles: [
-      { key: "poids_general", label: "Poids", priorites: ["alimentation", "energie", "digestion", "poids", "humeur"] },
-      { key: "retention", label: "Rétention d'eau", priorites: ["poids", "alimentation", "digestion"] },
-    ]
-  },
-  {
-    groupe: "Digestif",
-    sousProfiles: [
-      { key: "digestif", label: "Troubles digestifs", priorites: ["digestion", "alimentation", "douleurs", "energie", "peau"] },
-    ]
-  },
-  {
-    groupe: "Peau",
-    sousProfiles: [
-      { key: "peau_profil", label: "Problèmes de peau", priorites: ["peau", "alimentation", "digestion", "humeur"] },
-    ]
-  },
-  {
-    groupe: "Bien-être mental",
-    sousProfiles: [
-      { key: "mental", label: "Stress & Anxiété", priorites: ["anxiete", "humeur", "sommeil", "energie", "alimentation"] },
-    ]
-  },
-  {
-    groupe: "Sommeil",
-    sousProfiles: [
-      { key: "sommeil_profil", label: "Troubles du sommeil", priorites: ["sommeil", "anxiete", "energie", "humeur"] },
-    ]
-  },
+  { groupe: "Cycle hormonal", sousProfiles: [
+    { key: "spm", label: "SPM", priorites: ["humeur", "anxiete", "douleurs", "sommeil", "energie"] },
+    { key: "sopk", label: "SOPK", priorites: ["energie", "douleurs", "alimentation", "poids", "sommeil"] },
+    { key: "endometriose", label: "Endométriose", priorites: ["douleurs", "energie", "humeur", "sommeil"] },
+    { key: "fertilite", label: "Fertilité", priorites: ["alimentation", "anxiete", "energie", "sommeil"] },
+    { key: "menopause", label: "Ménopause", priorites: ["sommeil", "humeur", "anxiete", "energie", "douleurs"] },
+  ]},
+  { groupe: "Énergie & Fatigue", sousProfiles: [
+    { key: "fatigue", label: "Fatigue chronique", priorites: ["energie", "sommeil", "alimentation", "digestion", "humeur"] },
+    { key: "surmenage", label: "Surmenage", priorites: ["energie", "anxiete", "sommeil", "alimentation", "humeur"] },
+  ]},
+  { groupe: "Poids & Corps", sousProfiles: [
+    { key: "poids_general", label: "Poids", priorites: ["alimentation", "energie", "digestion", "poids", "humeur"] },
+    { key: "retention", label: "Rétention d'eau", priorites: ["poids", "alimentation", "digestion"] },
+  ]},
+  { groupe: "Digestif", sousProfiles: [
+    { key: "digestif", label: "Troubles digestifs", priorites: ["digestion", "alimentation", "douleurs", "energie", "peau"] },
+  ]},
+  { groupe: "Peau", sousProfiles: [
+    { key: "peau_profil", label: "Problèmes de peau", priorites: ["peau", "alimentation", "digestion", "humeur"] },
+  ]},
+  { groupe: "Bien-être mental", sousProfiles: [
+    { key: "mental", label: "Stress & Anxiété", priorites: ["anxiete", "humeur", "sommeil", "energie", "alimentation"] },
+  ]},
+  { groupe: "Sommeil", sousProfiles: [
+    { key: "sommeil_profil", label: "Troubles du sommeil", priorites: ["sommeil", "anxiete", "energie", "humeur"] },
+  ]},
 ];
 
 const SC = [
@@ -117,7 +207,7 @@ const P = {
 
 const CHART_JS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
 
-// ─── EXPORT PDF ANAMNÈSE ──────────────────────────────────────────────────────
+// ─── PDF ANAMNÈSE — téléchargement direct (plus de window.print) ──────────────
 const downloadAnamnesePDF = (anamnese, prenom) => {
   const text = anamnese.pdfText || "";
   const date = new Date(anamnese.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -134,10 +224,7 @@ const downloadAnamnesePDF = (anamnese, prenom) => {
   .header h1 { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: #B5583A; font-weight: 600; }
   .header .meta { font-size: 11px; color: rgba(28,16,8,0.5); text-align: right; }
   pre { white-space: pre-wrap; font-family: 'DM Sans', sans-serif; font-size: 12px; line-height: 1.8; color: #1C1008; }
-  @media print {
-    body { padding: 20px 24px; }
-    @page { margin: 1.5cm; size: A4; }
-  }
+  @media print { body { padding: 20px 24px; } @page { margin: 1.5cm; size: A4; } }
 </style>
 </head>
 <body>
@@ -154,7 +241,7 @@ const downloadAnamnesePDF = (anamnese, prenom) => {
 <pre>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
 </body>
 </html>`;
- const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -205,22 +292,24 @@ const wk = () => {
   return "Semaine du " + s.getDate() + " " + mois[s.getMonth()];
 };
 
+const initJournalAlimentaire = () =>
+  JOURS_SEMAINE.reduce((acc, jour) => ({
+    ...acc,
+    [jour]: [
+      { heure: "", texte: "", repas: "Matin" },
+      { heure: "", texte: "", repas: "Midi" },
+      { heure: "", texte: "", repas: "Soir" },
+    ]
+  }), {});
+
 function Toast({ message, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3200); return () => clearTimeout(t); }, [onClose]);
-  return (
-    <div style={{ position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", background:P.pAccent, color:"#1C1410", padding:"12px 22px", borderRadius:30, fontFamily:P.sans, fontSize:13, fontWeight:500, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,0.25)", animation:"toastIn 0.3s ease forwards" }}>
-      {message}
-    </div>
-  );
+  return <div style={{ position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", background:P.pAccent, color:"#1C1410", padding:"12px 22px", borderRadius:30, fontFamily:P.sans, fontSize:13, fontWeight:500, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 8px 32px rgba(0,0,0,0.25)", animation:"toastIn 0.3s ease forwards" }}>{message}</div>;
 }
 
 function ScoreDot({ value, size = 36 }) {
   const s = SC.find(x => x.v === value);
-  return (
-    <div style={{ width:size, height:size, borderRadius:"50%", background:s ? s.color+"22":"rgba(255,255,255,0.06)", border:`1.5px solid ${s ? s.color:"rgba(255,255,255,0.1)"}`, display:"flex", alignItems:"center", justifyContent:"center", color:s ? s.color:"rgba(255,255,255,0.3)", fontFamily:P.serif, fontSize:size*0.42, fontWeight:600, flexShrink:0 }}>
-      {value || "–"}
-    </div>
-  );
+  return <div style={{ width:size, height:size, borderRadius:"50%", background:s ? s.color+"22":"rgba(255,255,255,0.06)", border:`1.5px solid ${s ? s.color:"rgba(255,255,255,0.1)"}`, display:"flex", alignItems:"center", justifyContent:"center", color:s ? s.color:"rgba(255,255,255,0.3)", fontFamily:P.serif, fontSize:size*0.42, fontWeight:600, flexShrink:0 }}>{value || "–"}</div>;
 }
 
 const iP = (theme = "p") => ({
@@ -241,6 +330,110 @@ const Btn = ({ onClick, variant="primary", theme="p", disabled, children, style=
   };
   return <button onClick={onClick} disabled={disabled} style={{...base,...variants[variant]}}>{children}</button>;
 };
+
+function Section({ title, children, theme="p" }) {
+  return <div style={{marginBottom:20}}><p style={{color:theme==="c"?P.cText:P.pText,fontSize:14,fontWeight:500,marginBottom:12,lineHeight:1.4}}>{title}</p>{children}</div>;
+}
+
+function EmptyState({ message, theme="p" }) {
+  const bg=theme==="p"?P.pSurface:P.cSurface,bd=theme==="p"?P.pBorder:P.cBorder,td=theme==="p"?P.pTextDim:P.cTextDim;
+  return <div style={{background:bg,borderRadius:12,border:`1px solid ${bd}`,padding:"24px 20px",textAlign:"center"}}><p style={{color:td,fontSize:14,lineHeight:1.6}}>{message}</p></div>;
+}
+
+function FileTag({ name, url, theme="p" }) {
+  const bg=theme==="p"?P.pAccentDim:P.cGreenDim,bd=theme==="p"?P.pAccentBorder:P.cGreenBorder,col=theme==="p"?P.pAccent:P.cGreen;
+  const inner=<div style={{display:"inline-flex",alignItems:"center",gap:6,background:bg,border:`1px solid ${bd}`,borderRadius:8,padding:"6px 12px",marginBottom:6,marginRight:6}}><span style={{color:col,fontSize:12}}>📎</span><span style={{color:col,fontSize:12}}>{name}</span>{url&&<span style={{color:col,fontSize:10,opacity:0.7}}>↓</span>}</div>;
+  if(url)return<a href={fixPdfUrl(url)} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>{inner}</a>;
+  return inner;
+}
+
+function Chip({ label, color }) {
+  return <span style={{background:color+"18",border:`1px solid ${color}44`,borderRadius:20,padding:"3px 10px",fontSize:11,color,fontFamily:P.sans}}>{label}</span>;
+}
+
+// ─── COMPOSANT QUESTION PROFIL ────────────────────────────────────────────────
+function QuestionProfilItem({ q, value, onChange, theme="c" }) {
+  const textColor = theme==="c" ? P.cText : P.pText;
+  const dimColor = theme==="c" ? P.cTextDim : P.pTextDim;
+  const surfaceColor = theme==="c" ? P.cSurface : P.pSurface;
+  const borderColor = theme==="c" ? P.cBorder : P.pBorder;
+
+  return (
+    <div style={{marginBottom:16,background:surfaceColor,borderRadius:12,border:`1px solid ${borderColor}`,padding:"14px 16px"}}>
+      <p style={{color:textColor,fontSize:13,fontWeight:500,marginBottom:10}}>{q.icon} {q.question}</p>
+      {q.type === "scale" && (
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {SC.map(s => {
+            const active = value === s.v;
+            return <button key={s.v} onClick={() => onChange(active ? null : s.v)}
+              style={{padding:"7px 12px",borderRadius:20,border:`1.5px solid ${active?s.color:borderColor}`,background:active?s.color+"18":"transparent",color:active?s.color:dimColor,fontSize:12,fontFamily:P.sans,fontWeight:active?500:400}}>
+              {s.v} · {s.label}
+            </button>;
+          })}
+        </div>
+      )}
+      {q.type === "oui_non" && (
+        <div style={{display:"flex",gap:8}}>
+          {["Oui","Non","Parfois"].map(opt => {
+            const active = value === opt;
+            const col = opt==="Oui"?"#B5583A":opt==="Non"?"#4A8E6A":"#B8A05A";
+            return <button key={opt} onClick={() => onChange(active ? null : opt)}
+              style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${active?col:borderColor}`,background:active?col+"18":"transparent",color:active?col:dimColor,fontSize:12,fontFamily:P.sans,fontWeight:active?500:400}}>
+              {opt}
+            </button>;
+          })}
+        </div>
+      )}
+      {q.type === "text" && (
+        <textarea value={value||""} onChange={e=>onChange(e.target.value)} placeholder="Précise ici…" rows={2}
+          style={{...iP(theme),resize:"vertical",fontSize:13}}/>
+      )}
+    </div>
+  );
+}
+
+// ─── JOURNAL ALIMENTAIRE ──────────────────────────────────────────────────────
+function JournalAlimentaire({ journal, onChange, theme="c" }) {
+  const textColor = theme==="c" ? P.cText : P.pText;
+  const dimColor = theme==="c" ? P.cTextDim : P.pTextDim;
+  const surfaceColor = theme==="c" ? P.cSurface : P.pSurface;
+  const surface2 = theme==="c" ? P.cSurface2 : P.pSurface2;
+  const borderColor = theme==="c" ? P.cBorder : P.pBorder;
+  const accentColor = theme==="c" ? P.cGreen : P.pAccent;
+
+  const updateRepas = (jour, idx, field, val) => {
+    const newJournal = { ...journal };
+    newJournal[jour] = [...(newJournal[jour] || [])];
+    newJournal[jour][idx] = { ...newJournal[jour][idx], [field]: val };
+    onChange(newJournal);
+  };
+
+  return (
+    <div>
+      {JOURS_SEMAINE.map(jour => (
+        <div key={jour} style={{marginBottom:16,background:surfaceColor,borderRadius:12,border:`1px solid ${borderColor}`,overflow:"hidden"}}>
+          <div style={{background:surface2,padding:"10px 14px",borderBottom:`1px solid ${borderColor}`}}>
+            <p style={{color:textColor,fontSize:13,fontWeight:600}}>{jour}</p>
+          </div>
+          <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+            {(journal?.[jour] || [{heure:"",texte:"",repas:"Matin"},{heure:"",texte:"",repas:"Midi"},{heure:"",texte:"",repas:"Soir"}]).map((repas, idx) => (
+              <div key={idx} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                <div style={{flexShrink:0,width:50}}>
+                  <p style={{color:accentColor,fontSize:10,fontWeight:600,marginBottom:4}}>{repas.repas}</p>
+                  <input value={repas.heure} onChange={e=>updateRepas(jour,idx,"heure",e.target.value)}
+                    placeholder="12h" style={{width:"100%",background:surface2,border:`1px solid ${borderColor}`,borderRadius:8,padding:"6px 8px",color:textColor,fontSize:12,fontFamily:P.sans,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <textarea value={repas.texte} onChange={e=>updateRepas(jour,idx,"texte",e.target.value)}
+                  placeholder={`Repas du ${repas.repas.toLowerCase()}…`} rows={2}
+                  style={{flex:1,background:surface2,border:`1px solid ${borderColor}`,borderRadius:8,padding:"6px 10px",color:textColor,fontSize:12,fontFamily:P.sans,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function PolitiqueConfidentialite({ onClose, theme="p" }) {
   const bg=theme==="p"?P.pBg:P.cBg, tx=theme==="p"?P.pText:P.cText, tm=theme==="p"?P.pTextMid:P.cTextMid;
@@ -377,36 +570,22 @@ function Auth({ onLogin, onBack }) {
 }
 
 // ─── GRAPHIQUES ───────────────────────────────────────────────────────────────
-// Charge Chart.js une seule fois
-
 let chartJsLoaded = false;
 function loadChartJs(cb) {
   if (window.Chart) { cb(); return; }
   if (chartJsLoaded) { const wait = setInterval(() => { if (window.Chart) { clearInterval(wait); cb(); } }, 50); return; }
   chartJsLoaded = true;
-  const s = document.createElement("script");
-  s.src = CHART_JS_CDN;
-  s.onload = cb;
-  document.head.appendChild(s);
+  const s = document.createElement("script"); s.src = CHART_JS_CDN; s.onload = cb; document.head.appendChild(s);
 }
 
 const CHART_COLORS = {
-  sommeil:"#C8856C", energie:"#E8B89A", humeur:"#7A9E82",
-  anxiete:"#9E8A7A", douleurs:"#B5583A", digestion:"#6A9E7A",
-  alimentation:"#C4A882", peau:"#B8956A", poids:"#A89060",
-  _avg:"#C8856C",
+  sommeil:"#C8856C", energie:"#E8B89A", humeur:"#7A9E82", anxiete:"#9E8A7A",
+  douleurs:"#B5583A", digestion:"#6A9E7A", alimentation:"#C4A882", peau:"#B8956A",
+  poids:"#A89060", hydratation:"#7AB8C8", activite:"#8A9E7A", _avg:"#C8856C",
 };
 
-function getScoreColor(v) {
-  if (v >= 4) return "#7A9E82";
-  if (v === 3) return "#B8A05A";
-  return "#B5583A";
-}
-
-// ─── EvolutionChart — nouveau design marron avec Chart.js ────────────────────
 function EvolutionChart({ entries, activeKeys, theme="c" }) {
-  const canvasId = `evo-${Math.random().toString(36).slice(2,7)}`;
-  const [id] = useState(canvasId);
+  const [id] = useState(`evo-${Math.random().toString(36).slice(2,7)}`);
   const chartRef = useCallback(node => {
     if (!node) return;
     loadChartJs(() => {
@@ -416,70 +595,18 @@ function EvolutionChart({ entries, activeKeys, theme="c" }) {
       const tickColor = isDark ? "rgba(255,245,235,0.3)" : "rgba(44,28,16,0.35)";
       const tooltipBg = isDark ? "#2A1A10" : "#F5EDE2";
       const tooltipText = isDark ? "rgba(255,245,235,0.9)" : "#1E1208";
-
-      const getAvg = e => {
-        const vs = TI.map(i => e.scores?.[i.key]).filter(Boolean);
-        return vs.length ? Math.round(vs.reduce((a,b) => a+b, 0) / vs.length * 10) / 10 : null;
-      };
-
+      const getAvg = e => { const vs = TI.map(i => e.scores?.[i.key]).filter(Boolean); return vs.length ? Math.round(vs.reduce((a,b) => a+b, 0) / vs.length * 10) / 10 : null; };
       const KEYS = activeKeys.length ? activeKeys : ["_avg"];
-      const datasets = KEYS.map((key, ki) => {
+      const datasets = KEYS.map(key => {
         const color = CHART_COLORS[key] || "#C8856C";
-        const data = key === "_avg"
-          ? entries.map(e => getAvg(e))
-          : entries.map(e => e.scores?.[key] ?? null);
+        const data = key === "_avg" ? entries.map(e => getAvg(e)) : entries.map(e => e.scores?.[key] ?? null);
         const isAvg = key === "_avg";
-        return {
-          label: isAvg ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key),
-          data,
-          borderColor: color,
-          backgroundColor: color + (isAvg ? "18" : "10"),
-          borderWidth: isAvg ? 2 : 1.5,
-          pointBackgroundColor: color,
-          pointRadius: isAvg ? 4 : 3.5,
-          pointHoverRadius: 6,
-          tension: 0.4,
-          fill: isAvg,
-          spanGaps: true,
-        };
+        return { label: isAvg ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key), data, borderColor: color, backgroundColor: color + (isAvg ? "18" : "10"), borderWidth: isAvg ? 2 : 1.5, pointBackgroundColor: color, pointRadius: isAvg ? 4 : 3.5, pointHoverRadius: 6, tension: 0.4, fill: isAvg, spanGaps: true };
       });
-
-      const labels = entries.map(e => {
-        const d = new Date(e.date);
-        return `${d.getDate()}/${d.getMonth()+1}`;
-      });
-
+      const labels = entries.map(e => { const d = new Date(e.date); return `${d.getDate()}/${d.getMonth()+1}`; });
       node._chartInstance = new window.Chart(node, {
-        type: "line",
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: tooltipBg,
-              borderColor: "rgba(200,133,108,0.3)",
-              borderWidth: 1,
-              titleColor: tooltipText,
-              bodyColor: isDark ? "rgba(255,245,235,0.6)" : "rgba(44,28,16,0.6)",
-              callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y?.toFixed(1)}/5` },
-            },
-          },
-          scales: {
-            x: {
-              grid: { color: gridColor, lineWidth: 0.5 },
-              ticks: { font: { size: 10 }, color: tickColor, maxRotation: 0, autoSkip: entries.length > 8 },
-              border: { display: false },
-            },
-            y: {
-              min: 1, max: 5,
-              grid: { color: gridColor, lineWidth: 0.5 },
-              ticks: { stepSize: 1, font: { size: 10 }, color: tickColor },
-              border: { display: false },
-            },
-          },
-        },
+        type: "line", data: { labels, datasets },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: tooltipBg, borderColor: "rgba(200,133,108,0.3)", borderWidth: 1, titleColor: tooltipText, bodyColor: isDark ? "rgba(255,245,235,0.6)" : "rgba(44,28,16,0.6)", callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y?.toFixed(1)}/5` } } }, scales: { x: { grid: { color: gridColor, lineWidth: 0.5 }, ticks: { font: { size: 10 }, color: tickColor, maxRotation: 0, autoSkip: entries.length > 8 }, border: { display: false } }, y: { min: 1, max: 5, grid: { color: gridColor, lineWidth: 0.5 }, ticks: { stepSize: 1, font: { size: 10 }, color: tickColor }, border: { display: false } } } },
       });
     });
   }, [entries, activeKeys, theme]);
@@ -487,46 +614,24 @@ function EvolutionChart({ entries, activeKeys, theme="c" }) {
   const borderColor = theme === "c" ? P.cBorder : P.pBorder;
   const bg = theme === "c" ? P.cSurface : P.pSurface;
   const dimColor = theme === "c" ? P.cTextDim : P.pTextDim;
-
-  if (!entries || entries.length < 2) return (
-    <div style={{ background:bg, border:`1px solid ${borderColor}`, borderRadius:12, padding:"20px", textAlign:"center" }}>
-      <p style={{ color:dimColor, fontSize:13 }}>Au moins 2 semaines de suivi sont nécessaires.</p>
-    </div>
-  );
-
+  if (!entries || entries.length < 2) return <div style={{ background:bg, border:`1px solid ${borderColor}`, borderRadius:12, padding:"20px", textAlign:"center" }}><p style={{ color:dimColor, fontSize:13 }}>Au moins 2 semaines de suivi sont nécessaires.</p></div>;
   const KEYS = activeKeys.length ? activeKeys : ["_avg"];
-
   return (
     <div style={{ background:bg, border:`1px solid ${borderColor}`, borderRadius:14, padding:"16px", overflow:"hidden" }}>
-      <div style={{ position:"relative", width:"100%", height:200 }}>
-        <canvas ref={chartRef} />
-      </div>
-      {/* Légende */}
+      <div style={{ position:"relative", width:"100%", height:200 }}><canvas ref={chartRef} /></div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginTop:10, paddingTop:10, borderTop:`1px solid ${borderColor}` }}>
-        {KEYS.map(key => {
-          const color = CHART_COLORS[key] || "#C8856C";
-          const label = key === "_avg" ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key);
-          return (
-            <div key={key} style={{ display:"flex", alignItems:"center", gap:5 }}>
-              <div style={{ width:10, height:10, borderRadius:"50%", background:color }} />
-              <span style={{ fontSize:10, color:dimColor }}>{label}</span>
-            </div>
-          );
-        })}
+        {KEYS.map(key => { const color = CHART_COLORS[key] || "#C8856C"; const label = key === "_avg" ? "Moyenne globale" : (TI.find(t => t.key === key)?.label || key); return <div key={key} style={{ display:"flex", alignItems:"center", gap:5 }}><div style={{ width:10, height:10, borderRadius:"50%", background:color }} /><span style={{ fontSize:10, color:dimColor }}>{label}</span></div>; })}
       </div>
     </div>
   );
 }
 
-// ─── ChartSelector — pills de sélection + graphique ─────────────────────────
 function ChartSelector({ entries, theme="c" }) {
   const allKeys=[{key:"_avg",label:"Moyenne globale",icon:"📊"},...TI.map(t=>({key:t.key,label:t.label,icon:t.icon}))];
   const [selected,setSelected]=useState(["_avg"]);
   const toggle=key=>setSelected(prev=>prev.includes(key)?(prev.length>1?prev.filter(k=>k!==key):prev):[...prev,key]);
-  const borderColor=theme==="c"?P.cBorder:P.pBorder;
-  const activeBg=theme==="c"?P.cGreenDim:P.pAccentDim;
-  const activeColor=theme==="c"?P.cGreen:P.pAccent;
-  const activeEdge=theme==="c"?P.cGreenBorder:P.pAccentBorder;
+  const borderColor=theme==="c"?P.cBorder:P.pBorder, activeBg=theme==="c"?P.cGreenDim:P.pAccentDim;
+  const activeColor=theme==="c"?P.cGreen:P.pAccent, activeEdge=theme==="c"?P.cGreenBorder:P.pAccentBorder;
   const hasData=key=>entries.some(e=>key==="_avg"?TI.some(t=>e.scores?.[t.key]):e.scores?.[key]);
   return (
     <div>
@@ -542,28 +647,24 @@ function ChartSelector({ entries, theme="c" }) {
 }
 
 function BottomNav({ items, active, onChange, theme }) {
-  const bg=theme==="p"?P.pBg:(P.cNavBg||P.cSurface2),border=theme==="p"?P.pBorder:P.cBorder;
-  const activeColor=theme==="p"?P.pAccent:P.cGreen,inactiveColor=theme==="p"?P.pTextDim:P.cTextDim;
+  const bg=theme==="p"?P.pBg:(P.cNavBg||P.cSurface2), border=theme==="p"?P.pBorder:P.cBorder;
+  const activeColor=theme==="p"?P.pAccent:P.cGreen, inactiveColor=theme==="p"?P.pTextDim:P.cTextDim;
   return (
     <div style={{ position:"fixed", bottom:0, left:0, right:0, background:theme==="p"?"linear-gradient(to top,#160E06,#1E1408)":bg, borderTop:`1px solid ${theme==="p"?"rgba(200,133,108,0.2)":border}`, boxShadow:theme==="p"?"0 -4px 20px rgba(0,0,0,0.5)":"0 -2px 10px rgba(0,0,0,0.15)", display:"flex", paddingBottom:"env(safe-area-inset-bottom, 8px)", zIndex:100 }}>
       {items.map(({key,label,icon,badge})=>{
         const isActive=active===key;
-        return (
-          <button key={key} onClick={()=>onChange(key)} style={{ flex:1, border:"none", background:isActive&&theme==="p"?"rgba(200,133,108,0.08)":"none", padding:"12px 4px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, color:isActive?activeColor:inactiveColor, fontFamily:P.sans, fontSize:10, fontWeight:isActive?600:400, letterSpacing:isActive?"0.5px":"0", transition:"all 0.2s", position:"relative", borderRadius:"12px 12px 0 0" }}>
-            <span style={{ fontSize:24, lineHeight:1, position:"relative", filter:isActive&&theme==="p"?"drop-shadow(0 0 8px rgba(200,133,108,0.6))":isActive?"drop-shadow(0 0 6px rgba(74,122,90,0.5))":"none", transition:"filter 0.2s" }}>
-              {icon}
-              {badge>0&&<span style={{ position:"absolute", top:-2, right:-4, width:8, height:8, background:activeColor, borderRadius:"50%", display:"block" }}/>}
-            </span>
-            <span>{label}</span>
-          </button>
-        );
+        return <button key={key} onClick={()=>onChange(key)} style={{ flex:1, border:"none", background:isActive&&theme==="p"?"rgba(200,133,108,0.08)":"none", padding:"12px 4px 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, color:isActive?activeColor:inactiveColor, fontFamily:P.sans, fontSize:10, fontWeight:isActive?600:400, letterSpacing:isActive?"0.5px":"0", transition:"all 0.2s", position:"relative", borderRadius:"12px 12px 0 0" }}>
+          <span style={{ fontSize:24, lineHeight:1, position:"relative", filter:isActive&&theme==="p"?"drop-shadow(0 0 8px rgba(200,133,108,0.6))":isActive?"drop-shadow(0 0 6px rgba(74,122,90,0.5))":"none", transition:"filter 0.2s" }}>
+            {icon}{badge>0&&<span style={{ position:"absolute", top:-2, right:-4, width:8, height:8, background:activeColor, borderRadius:"50%", display:"block" }}/>}
+          </span>
+          <span>{label}</span>
+        </button>;
       })}
     </div>
   );
 }
 
 // ─── ESPACE CLIENTE ───────────────────────────────────────────────────────────
-
 const CLIENT_NAV = [
   { key:"home", label:"Accueil", icon:"🏠" },
   { key:"suivi", label:"Suivi", icon:"📝" },
@@ -576,11 +677,15 @@ function Cliente({ user, onLogout }) {
   const [entries,setEntries]=useState([]);const [messages,setMessages]=useState([]);
   const [anamneses,setAnamneses]=useState([]);const [complements,setComplements]=useState([]);
   const [protocoles,setProtocoles]=useState([]);const [documents,setDocuments]=useState([]);
-  const [userProfil,setUserProfil]=useState({profilGroupe:"",profilSous:""});
-  const [view,setView]=useState("home");const [clientFolder,setClientFolder]=useState(null);const [scores,setScores]=useState({});
-  const [notes,setNotes]=useState({});const [cyclePhase,setCyclePhase]=useState("");
-  const [cycleNote,setCycleNote]=useState("");const [complementsPris,setComplementsPris]=useState({});
+  const [userProfil,setUserProfil]=useState({profils:[],axesManuel:[],axesExclus:[]});
+  const [view,setView]=useState("home");const [clientFolder,setClientFolder]=useState(null);
+  const [scores,setScores]=useState({});const [notes,setNotes]=useState({});
+  const [scoresProfi,setScoresProfi]=useState({});
+  const [cyclePhase,setCyclePhase]=useState("");const [cycleNote,setCycleNote]=useState("");
+  const [complementsPris,setComplementsPris]=useState({});
   const [humeur,setHumeur]=useState("");const [confidences,setConfidences]=useState("");
+  const [commentaireCliente,setCommentaireCliente]=useState("");
+  const [journalAlimentaire,setJournalAlimentaire]=useState(initJournalAlimentaire());
   const [uploadDocs,setUploadDocs]=useState([]);const [uploadingDocs,setUploadingDocs]=useState(false);
   const [saved,setSaved]=useState(false);const [loading,setLoading]=useState(true);
   const [toast,setToast]=useState("");const [anamneseView,setAnamneseView]=useState(false);
@@ -608,7 +713,8 @@ function Cliente({ user, onLogout }) {
 
   const uploadToCloudinaryClient=async(file,folder)=>{
     const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder",folder);
-    const isPDF=file?.type==="application/pdf";const endpoint=isPDF?"raw":"image";const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});
+    const isPDF=file?.type==="application/pdf";const endpoint=isPDF?"raw":"image";
+    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${endpoint}/upload`,{method:"POST",body:fd});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`Erreur ${res.status}`);}
     const data=await res.json();if(!data.secure_url)throw new Error("Upload échoué");
     return{url:data.secure_url,name:file.name,type:file.type};
@@ -620,22 +726,41 @@ function Cliente({ user, onLogout }) {
     setUploadDocs(prev=>[...prev,...uploaded]);setUploadingDocs(false);
   };
 
-  // ── MODIFICATION 2 : Suppression d'un document Firestore côté cliente ──
-  const deleteDocument = async (docId) => {
-    if (!window.confirm("Supprimer ce document ?")) return;
-    await deleteDoc(doc(db, "documents", docId));
-    showToast("Document supprimé ✓");
+  const deleteDocument=async(docId)=>{
+    if(!window.confirm("Supprimer ce document ?"))return;
+    await deleteDoc(doc(db,"documents",docId));showToast("Document supprimé ✓");
   };
 
   const submit=async()=>{
-    await addDoc(collection(db,"entries"),{userUid:user.uid,userEmail:user.email,userPrénom:user.prénom,weekLabel:wk(),date:new Date().toISOString(),scores,notes,cyclePhase,cycleNote,complementsPris,humeur_libre:humeur,confidences,documents:uploadDocs});
+    const entryData = {
+      userUid:user.uid, userEmail:user.email, userPrénom:user.prénom,
+      weekLabel:wk(), date:new Date().toISOString(),
+      scores, notes, scoresProfi,
+      cyclePhase, cycleNote, complementsPris,
+      humeur_libre:humeur, confidences,
+      commentaireCliente, commentaireDate: commentaireCliente ? new Date().toISOString() : "",
+      journalAlimentaire, documents:uploadDocs,
+    };
+    await addDoc(collection(db,"entries"), entryData);
     try{await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:user.prénom,action:"a rempli son suivi",to_email:PRATICIENNE_EMAIL});}catch{}
-    setScores({});setNotes({});setCyclePhase("");setCycleNote("");setComplementsPris({});setHumeur("");setConfidences("");setUploadDocs([]);
+    if(commentaireCliente){
+      try{await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:user.prénom,action:"a laissé un commentaire sur son suivi",to_email:PRATICIENNE_EMAIL});}catch{}
+    }
+    setScores({});setNotes({});setScoresProfi({});setCyclePhase("");setCycleNote("");
+    setComplementsPris({});setHumeur("");setConfidences("");setCommentaireCliente("");
+    setJournalAlimentaire(initJournalAlimentaire());setUploadDocs([]);
     setSaved(true);showToast("Suivi envoyé à Meije ✓");
     setTimeout(()=>{setSaved(false);setView("home");},1800);
   };
 
+  // Répondre à un commentaire de Meije
+  const repondreCommentaire=async(entryId, reponse)=>{
+    await updateDoc(doc(db,"entries",entryId),{reponsePraticienne:reponse,reponseDate:new Date().toISOString()});
+    showToast("Réponse enregistrée ✓");
+  };
+
   const lm=messages[messages.length-1];const hasAnamnese=anamneses.length>0;
+  const profilsActifs = userProfil.profils || [];
 
   if(loading)return<div style={{minHeight:"100vh",background:P.cBg,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{fontFamily:P.serif,fontSize:18,color:P.cTextDim,fontWeight:300}}>Chargement…</p></div>;
   if(anamneseView)return<Anamnese user={user} onDone={()=>setAnamneseView(false)} readonly={false} existingData={anamneses[0]}/>;
@@ -665,21 +790,13 @@ function Cliente({ user, onLogout }) {
           </div>
           {(()=>{
             const alerts=[];
-            if(!hasAnamnese)alerts.push(<button key="qst" onClick={()=>setAnamneseView(true)} style={{width:"100%",background:P.cTerraDim,border:`1px solid rgba(181,88,58,0.25)`,borderRadius:14,padding:"14px 18px",marginBottom:10,textAlign:"left",cursor:"pointer"}}>
-              <p style={{fontSize:10,color:P.cTerra,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>📋 Action requise</p>
-              <p style={{color:P.cText,fontSize:13,fontWeight:500}}>Remplis ton questionnaire de santé →</p>
-            </button>);
+            if(!hasAnamnese)alerts.push(<button key="qst" onClick={()=>setAnamneseView(true)} style={{width:"100%",background:P.cTerraDim,border:`1px solid rgba(181,88,58,0.25)`,borderRadius:14,padding:"14px 18px",marginBottom:10,textAlign:"left",cursor:"pointer"}}><p style={{fontSize:10,color:P.cTerra,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>📋 Action requise</p><p style={{color:P.cText,fontSize:13,fontWeight:500}}>Remplis ton questionnaire de santé →</p></button>);
             const lastEntry=entries[entries.length-1];const daysSince=lastEntry?Math.floor((Date.now()-new Date(lastEntry.date).getTime())/(1000*60*60*24)):99;
-            if(daysSince>=6)alerts.push(<button key="suivi" onClick={()=>setView("suivi")} style={{width:"100%",background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"14px 18px",marginBottom:10,textAlign:"left",cursor:"pointer"}}>
-              <p style={{fontSize:10,color:P.cGreen,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>📝 Suivi de la semaine</p>
-              <p style={{color:P.cText,fontSize:13}}>C'est l'heure de remplir ton suivi →</p>
-            </button>);
-            if(lm&&Date.now()-new Date(lm.date).getTime()<7*24*60*60*1000)alerts.push(
-              <div key="msg" style={{background:P.cSurface,border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"14px 18px",marginBottom:10}}>
-                <p style={{fontSize:10,color:P.cGreen,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>💬 Nouveau message de Meije</p>
-                <p style={{color:P.cText,fontSize:13,lineHeight:1.6}}>{lm.text}</p>
-              </div>
-            );
+            if(daysSince>=6)alerts.push(<button key="suivi" onClick={()=>setView("suivi")} style={{width:"100%",background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"14px 18px",marginBottom:10,textAlign:"left",cursor:"pointer"}}><p style={{fontSize:10,color:P.cGreen,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>📝 Suivi de la semaine</p><p style={{color:P.cText,fontSize:13}}>C'est l'heure de remplir ton suivi →</p></button>);
+            if(lm&&Date.now()-new Date(lm.date).getTime()<7*24*60*60*1000)alerts.push(<div key="msg" style={{background:P.cSurface,border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"14px 18px",marginBottom:10}}><p style={{fontSize:10,color:P.cGreen,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>💬 Nouveau message de Meije</p><p style={{color:P.cText,fontSize:13,lineHeight:1.6}}>{lm.text}</p></div>);
+            // Notif réponse praticienne sur suivi
+            const lastEntryWithReponse = [...entries].reverse().find(e => e.reponsePraticienne && e.reponseDate && Date.now()-new Date(e.reponseDate).getTime()<7*24*60*60*1000);
+            if(lastEntryWithReponse) alerts.push(<div key="rep" style={{background:P.cSurface,border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"14px 18px",marginBottom:10}}><p style={{fontSize:10,color:P.cGreen,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>💬 Meije a répondu à ton suivi</p><p style={{color:P.cText,fontSize:13,lineHeight:1.6}}>{lastEntryWithReponse.reponsePraticienne}</p></div>);
             return alerts.length>0?<div style={{marginBottom:8}}>{alerts}</div>:null;
           })()}
           <p style={{color:P.cTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"2px",marginBottom:12}}>Mes dossiers</p>
@@ -717,6 +834,8 @@ function Cliente({ user, onLogout }) {
           <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:P.cTextMid,fontSize:13,fontFamily:P.sans,marginBottom:16,cursor:"pointer"}}>← Retour</button>
           <p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300,marginBottom:4}}>Suivi de la semaine</p>
           <p style={{color:P.cTextDim,fontSize:12,letterSpacing:"0.5px",marginBottom:24}}>{wk()}</p>
+
+          {/* Compléments */}
           {complements.length>0&&(
             <Section title="Tes compléments cette semaine" theme="c">
               {complements.map((c,i)=>{
@@ -725,12 +844,16 @@ function Cliente({ user, onLogout }) {
               })}
             </Section>
           )}
+
+          {/* Phase du cycle */}
           <Section title="🌸 Où en es-tu dans ton cycle ?" theme="c">
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
               {PHASES_CYCLE.map(p=><button key={p} onClick={()=>setCyclePhase(p)} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${cyclePhase===p?P.cGreen:P.cBorder}`,background:cyclePhase===p?P.cGreenDim:"transparent",color:cyclePhase===p?P.cGreen:P.cTextMid,fontSize:13,fontFamily:P.sans}}>{p}</button>)}
             </div>
             <textarea value={cycleNote} onChange={e=>setCycleNote(e.target.value)} placeholder="Précisions sur ton cycle..." rows={2} style={{...iP("c"),resize:"vertical"}}/>
           </Section>
+
+          {/* Tronc commun */}
           {(()=>{
             const axesExclus=userProfil.axesExclus||[];
             const toutesLesPriorites=[...new Set([(userProfil.profils||[]).flatMap(key=>{const s=PROFILS.flatMap(g=>g.sousProfiles).find(s=>s.key===key);return s?.priorites||[];}),...(userProfil.axesManuel||[])].flat())].filter(k=>!axesExclus.includes(k));
@@ -739,12 +862,47 @@ function Cliente({ user, onLogout }) {
             const renderQuestion=(item,isPrio)=>(<div key={item.key} style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><p style={{color:P.cText,fontSize:14,fontWeight:500}}>{item.icon} {item.question}</p>{isPrio&&toutesLesPriorites.length>0&&<span style={{background:P.cGreenDim,border:`0.5px solid ${P.cGreenBorder}`,borderRadius:20,padding:"2px 8px",fontSize:9,color:P.cGreen,fontWeight:500,textTransform:"uppercase",letterSpacing:"1px"}}>Prioritaire</span>}</div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{SC.map(s=>{const active=scores[item.key]===s.v;return<button key={s.v} onClick={()=>setScores(p=>({...p,[item.key]:s.v}))} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${active?s.color:P.cBorder}`,background:active?s.color+"18":"transparent",color:active?s.color:P.cTextMid,fontSize:13,fontFamily:P.sans,fontWeight:active?500:400}}>{s.v} · {s.label}</button>;})}</div><textarea value={notes[item.key]||""} onChange={e=>setNotes(p=>({...p,[item.key]:e.target.value}))} placeholder={`Précisions sur ${item.label.toLowerCase()}…`} rows={2} style={{...iP("c"),resize:"vertical"}}/></div>);
             return<>{prioritaires.map(item=>renderQuestion(item,true))}{secondaires.length>0&&<div style={{marginTop:8,marginBottom:16,borderTop:`1px solid ${P.cBorder}`,paddingTop:16}}><p style={{color:P.cTextDim,fontSize:11,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:14}}>Autres paramètres</p>{secondaires.map(item=>renderQuestion(item,false))}</div>}</>;
           })()}
+
+          {/* Bloc spécifique par profil */}
+          {profilsActifs.length > 0 && (() => {
+            const questionsSpecifiques = profilsActifs.flatMap(profil => QUESTIONS_PROFIL[profil] || []);
+            if(questionsSpecifiques.length === 0) return null;
+            const profil = PROFILS.flatMap(g=>g.sousProfiles).find(s=>s.key===profilsActifs[0]);
+            return (
+              <div style={{marginTop:8,marginBottom:20,background:"rgba(74,122,90,0.05)",border:`1px solid ${P.cGreenBorder}`,borderRadius:14,padding:"16px"}}>
+                <p style={{color:P.cGreen,fontSize:11,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:14,fontWeight:600}}>
+                  🎯 Suivi {profilsActifs.map(k=>PROFILS.flatMap(g=>g.sousProfiles).find(s=>s.key===k)?.label).filter(Boolean).join(" · ")}
+                </p>
+                {questionsSpecifiques.map(q => (
+                  <QuestionProfilItem key={q.key} q={q} value={scoresProfi[q.key]}
+                    onChange={val => setScoresProfi(p=>({...p,[q.key]:val}))} theme="c"/>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Humeur globale */}
           <Section title="Comment tu te sens globalement ?" theme="c">
             <textarea value={humeur} onChange={e=>setHumeur(e.target.value)} placeholder="Fatiguée, stressée, en forme…" rows={3} style={{...iP("c"),resize:"vertical"}}/>
           </Section>
+
+          {/* Journal alimentaire */}
+          <div style={{marginBottom:20}}>
+            <p style={{color:P.cText,fontSize:14,fontWeight:500,marginBottom:4}}>🥗 Journal alimentaire de la semaine</p>
+            <p style={{color:P.cTextDim,fontSize:12,marginBottom:12}}>Note tes repas avec l'heure pour chaque jour</p>
+            <JournalAlimentaire journal={journalAlimentaire} onChange={setJournalAlimentaire} theme="c"/>
+          </div>
+
+          {/* Confidences */}
           <Section title="Tu as quelque chose à ajouter ?" theme="c">
-            <textarea value={confidences} onChange={e=>setConfidences(e.target.value)} placeholder="Une question, un détail…" rows={4} style={{...iP("c"),resize:"vertical"}}/>
+            <textarea value={confidences} onChange={e=>setConfidences(e.target.value)} placeholder="Une question, un détail…" rows={3} style={{...iP("c"),resize:"vertical"}}/>
           </Section>
+
+          {/* Commentaire pour Meije */}
+          <Section title="💬 Laisser un commentaire à Meije" theme="c">
+            <textarea value={commentaireCliente} onChange={e=>setCommentaireCliente(e.target.value)} placeholder="Un mot, une question directement pour Meije sur ce suivi…" rows={3} style={{...iP("c"),resize:"vertical"}}/>
+          </Section>
+
           {saved?<div style={{background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:12,padding:14,color:P.cGreen,textAlign:"center"}}>Suivi enregistré ✓</div>:<Btn onClick={submit} variant="cPrimary" style={{width:"100%",marginTop:8}}>Envoyer à Meije</Btn>}
         </div>
       )}
@@ -763,15 +921,11 @@ function Cliente({ user, onLogout }) {
           <p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300,marginBottom:4}}>Mon évolution</p>
           <p style={{color:P.cTextDim,fontSize:12,marginBottom:20}}>Tous tes paramètres de santé, semaine après semaine</p>
           {entries.length<2?<EmptyState message="Remplis au moins 2 semaines de suivi pour voir ton évolution." theme="c"/>:(
-            <>
-              {(()=>{const last=entries[entries.length-1],first=entries[0];const getAvg=e=>{const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;};const avgFirst=getAvg(first),avgLast=getAvg(last),diff=avgFirst&&avgLast?(avgLast-avgFirst).toFixed(1):null;return diff?(<div style={{background:diff>0?P.cGreenDim:P.cTerraDim,border:`1px solid ${diff>0?P.cGreenBorder:"rgba(181,88,58,0.2)"}`,borderRadius:14,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:28}}>{diff>0?"📈":"📉"}</span><div><p style={{color:diff>0?P.cGreen:P.cTerra,fontWeight:500,fontSize:14}}>{diff>0?`+${diff} points depuis le début`:`${diff} points depuis le début`}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{entries.length} semaines · de {avgFirst?.toFixed(1)} à {avgLast?.toFixed(1)}</p></div></div>):null;})()}
-              <ChartSelector entries={entries} theme="c"/>
-            </>
+            <>{(()=>{const last=entries[entries.length-1],first=entries[0];const getAvg=e=>{const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;};const avgFirst=getAvg(first),avgLast=getAvg(last),diff=avgFirst&&avgLast?(avgLast-avgFirst).toFixed(1):null;return diff?(<div style={{background:diff>0?P.cGreenDim:P.cTerraDim,border:`1px solid ${diff>0?P.cGreenBorder:"rgba(181,88,58,0.2)"}`,borderRadius:14,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:28}}>{diff>0?"📈":"📉"}</span><div><p style={{color:diff>0?P.cGreen:P.cTerra,fontWeight:500,fontSize:14}}>{diff>0?`+${diff} points depuis le début`:`${diff} points depuis le début`}</p><p style={{color:P.cTextMid,fontSize:12,marginTop:2}}>{entries.length} semaines · de {avgFirst?.toFixed(1)} à {avgLast?.toFixed(1)}</p></div></div>):null;})()}<ChartSelector entries={entries} theme="c"/></>
           )}
         </div>
       )}
 
-      {/* ── VUE DOCS — avec suppression ── */}
       {view==="docs"&&(
         <div style={inner} className="fade-in">
           <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:P.cTextMid,fontSize:13,fontFamily:P.sans,marginBottom:16,cursor:"pointer"}}>← Retour</button>
@@ -783,23 +937,7 @@ function Cliente({ user, onLogout }) {
             {uploadingDocs&&<p style={{color:P.cGreen,fontSize:13,marginTop:10}}>Upload en cours…</p>}
             {uploadDocs.length>0&&<div style={{marginTop:14}}>{uploadDocs.map((d,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"8px 12px",marginBottom:6}}><span style={{color:P.cGreen,fontSize:12}}>📎 {d.name}</span><button onClick={()=>setUploadDocs(prev=>prev.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:P.cTextMid,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button></div>)}<Btn variant="cPrimary" onClick={async()=>{await addDoc(collection(db,"documents"),{userUid:user.uid,userEmail:user.email,date:new Date().toISOString(),files:uploadDocs});try{await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:user.prénom,action:"a partagé des documents",to_email:PRATICIENNE_EMAIL});}catch{}setUploadDocs([]);showToast("Documents envoyés ✓");}} style={{marginTop:12,width:"100%"}}>Envoyer à Meije</Btn></div>}
           </div>
-          {/* ── MODIFICATION 2 : liste docs avec bouton supprimer ── */}
-          {documents.length>0&&(
-            <div style={{marginTop:8}}>
-              <p style={{color:P.cTextMid,fontSize:12,marginBottom:10}}>Bilans déjà envoyés :</p>
-              {documents.map(d=>(
-                <div key={d.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"12px 16px",marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <p style={{color:P.cTextDim,fontSize:11}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p>
-                    <button onClick={()=>deleteDocument(d.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer",padding:"0 4px"}} title="Supprimer ce document">×</button>
-                  </div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {documents.length>0&&(<div style={{marginTop:8}}><p style={{color:P.cTextMid,fontSize:12,marginBottom:10}}>Bilans déjà envoyés :</p>{documents.map(d=>(<div key={d.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"12px 16px",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><p style={{color:P.cTextDim,fontSize:11}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p><button onClick={()=>deleteDocument(d.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:18,lineHeight:1,cursor:"pointer",padding:"0 4px"}}>×</button></div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"6px 10px",color:P.cGreen,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div></div>))}</div>)}
         </div>
       )}
 
@@ -828,7 +966,7 @@ function Cliente({ user, onLogout }) {
           <p style={{fontFamily:P.serif,fontSize:22,color:P.cText,fontWeight:300,marginBottom:20}}>Mon historique</p>
           {[...entries].reverse().map(e=>{
             const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean),avg=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null,sc=avg?SC.find(x=>x.v===Math.round(avg)):null;
-            return<div key={e.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"16px 18px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><p style={{color:P.cText,fontWeight:500,fontSize:14}}>{e.weekLabel}</p><p style={{color:P.cTextDim,fontSize:11,marginTop:2}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p></div>{avg&&<div style={{background:sc?sc.color+"22":P.cSurface2,border:`1.5px solid ${sc?.color||P.cBorder}`,borderRadius:"50%",width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:16,color:sc?.color||P.cTextDim}}>{avg.toFixed(1)}</div>}</div>{e.cyclePhase&&<p style={{color:P.cAccent,fontSize:12,marginBottom:6}}>Phase : {e.cyclePhase}</p>}{e.confidences&&<p style={{color:P.cTextMid,fontSize:13,lineHeight:1.6}}>{e.confidences}</p>}</div>;
+            return<div key={e.id} style={{background:P.cSurface,borderRadius:12,border:`1px solid ${P.cBorder}`,padding:"16px 18px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><p style={{color:P.cText,fontWeight:500,fontSize:14}}>{e.weekLabel}</p><p style={{color:P.cTextDim,fontSize:11,marginTop:2}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p></div>{avg&&<div style={{background:sc?sc.color+"22":P.cSurface2,border:`1.5px solid ${sc?.color||P.cBorder}`,borderRadius:"50%",width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:P.serif,fontSize:16,color:sc?.color||P.cTextDim}}>{avg.toFixed(1)}</div>}</div>{e.cyclePhase&&<p style={{color:P.cAccent,fontSize:12,marginBottom:6}}>Phase : {e.cyclePhase}</p>}{e.commentaireCliente&&<div style={{background:P.cGreenDim,border:`1px solid ${P.cGreenBorder}`,borderRadius:8,padding:"8px 12px",marginTop:8}}><p style={{color:P.cGreen,fontSize:11,marginBottom:4}}>Ton commentaire</p><p style={{color:P.cText,fontSize:13}}>{e.commentaireCliente}</p></div>}{e.reponsePraticienne&&<div style={{background:P.cTerraDim,border:`1px solid rgba(181,88,58,0.2)`,borderRadius:8,padding:"8px 12px",marginTop:6}}><p style={{color:P.cTerra,fontSize:11,marginBottom:4}}>Réponse de Meije</p><p style={{color:P.cText,fontSize:13}}>{e.reponsePraticienne}</p></div>}</div>;
           })}
         </div>
       )}
@@ -838,160 +976,44 @@ function Cliente({ user, onLogout }) {
   );
 }
 
-function Section({ title, children, theme="p" }) {
-  return<div style={{marginBottom:20}}><p style={{color:theme==="c"?P.cText:P.pText,fontSize:14,fontWeight:500,marginBottom:12,lineHeight:1.4}}>{title}</p>{children}</div>;
-}
-
-function EmptyState({ message, theme="p" }) {
-  const bg=theme==="p"?P.pSurface:P.cSurface,bd=theme==="p"?P.pBorder:P.cBorder,td=theme==="p"?P.pTextDim:P.cTextDim;
-  return<div style={{background:bg,borderRadius:12,border:`1px solid ${bd}`,padding:"24px 20px",textAlign:"center"}}><p style={{color:td,fontSize:14,lineHeight:1.6}}>{message}</p></div>;
-}
-
-function FileTag({ name, url, theme="p" }) {
-  const bg=theme==="p"?P.pAccentDim:P.cGreenDim,bd=theme==="p"?P.pAccentBorder:P.cGreenBorder,col=theme==="p"?P.pAccent:P.cGreen;
-  const inner=<div style={{display:"inline-flex",alignItems:"center",gap:6,background:bg,border:`1px solid ${bd}`,borderRadius:8,padding:"6px 12px",marginBottom:6,marginRight:6}}><span style={{color:col,fontSize:12}}>📎</span><span style={{color:col,fontSize:12}}>{name}</span>{url&&<span style={{color:col,fontSize:10,opacity:0.7}}>↓</span>}</div>;
-  if(url)return<a href={fixPdfUrl(url)} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>{inner}</a>;
-  return inner;
-}
-
-function Chip({ label, color }) {
-  return<span style={{background:color+"18",border:`1px solid ${color}44`,borderRadius:20,padding:"3px 10px",fontSize:11,color,fontFamily:P.sans}}>{label}</span>;
+// ─── FONCTION IA (inchangée) ──────────────────────────────────────────────────
+async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc }) {
+  setIaLoading(true); setIaError("");
+  const bilans = [];
+  documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
+  anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
+  if (bilans.length === 0) { setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace."); setIaLoading(false); return; }
+  const anamneseTexte = anamneses.map(a => { if (!a.form) return ""; const f = a.form; return [f.problematique && `Problématique : ${f.problematique}`, f.objectifs3mois && `Objectifs : ${f.objectifs3mois}`, f.maladiesChroniques && `Antécédents : ${f.maladiesChroniques}`, f.medicaments && `Médicaments : ${f.medicaments}`, f.complementsActuels && `Compléments actuels : ${f.complementsActuels}`, f.qualiteSommeil && `Sommeil : ${f.qualiteSommeil}/10`, f.niveauStress && `Stress : ${f.niveauStress}/10`, f.dureeCycle && `Cycle : ${f.dureeCycle}j / règles ${f.dureeRegles}j`, f.intensiteDouleurs && `Douleurs : ${f.intensiteDouleurs}/10 — ${f.descriptionDouleurs}`, f.dejeunerType && `Déjeuner : ${f.dejeunerType}`, f.dinerType && `Dîner : ${f.dinerType}`].filter(Boolean).join("\n"); }).join("\n\n");
+  const dernierSuivi = entries.length > 0 ? (() => { const e = entries[entries.length - 1]; return [e.weekLabel, e.cyclePhase && `Phase cycle : ${e.cyclePhase}`, ...TI.map(i => e.scores?.[i.key] ? `${i.label} : ${e.scores[i.key]}/5${e.notes?.[i.key] ? ` (${e.notes[i.key]})` : ""}` : null).filter(Boolean), e.humeur_libre && `Humeur : ${e.humeur_libre}`, e.confidences && `Ajout : ${e.confidences}`, e.commentaireCliente && `Commentaire : ${e.commentaireCliente}`].filter(Boolean).join("\n"); })() : "Pas encore de suivi rempli.";
+  const toBase64 = async (url) => { try { const res = await fetch(url); const blob = await res.blob(); return new Promise((res2, rej) => { const r = new FileReader(); r.onload = () => res2(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); }); } catch { return null; } };
+  setIaStep("Chargement des bilans…");
+  const docsContent = [];
+  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes(".pdf")).slice(0, 3);
+  const images = bilans.filter(b => b.type?.includes("image")).slice(0, 2);
+  for (const pdf of pdfs) { const b64 = await toBase64(pdf.url); if (b64) docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: pdf.name }); }
+  for (const img of images) { const b64 = await toBase64(img.url); if (b64) docsContent.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: b64 } }); }
+  const SYSTEM_CLIENT = getSystemClient(selected.prenom);
+  const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
+  try {
+    setIaStep("Génération du protocole cliente…");
+    const r1 = await fetch("/api/claude", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ max_tokens: 4000, system: SYSTEM_CLIENT, messages: [{ role: "user", content: [{ type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` }, ...docsContent] }] }) });
+    const d1 = await r1.json(); const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
+    setIaStep("Génération du protocole praticienne…");
+    const r2 = await fetch("/api/claude", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ max_tokens: 4000, system: SYSTEM_PRAT, messages: [{ role: "user", content: [{ type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé.` }, ...docsContent] }] }) });
+    const d2 = await r2.json(); const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
+    setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
+    if (protocolePraticienne) { await setDoc(doc(db, "notes_privees", `proto_ia_${selected.uid}`), { clientUid: selected.uid, type: "protocole_praticienne_ia", text: protocolePraticienne, date: new Date().toISOString() }); setProtoPrat(protocolePraticienne); }
+    setIaStep(""); showToast("Protocoles générés ✓ Relis avant d'envoyer 🌿");
+  } catch (e) { setIaError("Erreur lors de la génération : " + e.message); }
+  setIaLoading(false);
 }
 
 // ─── ESPACE PRATICIENNE ───────────────────────────────────────────────────────
-
 const PRAT_NAV = [
   { key:"clients", label:"Consultantes", icon:"👥" },
   { key:"messages", label:"Messages", icon:"💬" },
   { key:"profil", label:"Mon espace", icon:"🌿" },
 ];
-
-// ─── FONCTION IA ──────────────────────────────────────────────────────────────
-
-async function genererProtocolesIA({ selected, documents, anamneses, entries, protocoles, setNewProtocole, setProtoPrat, showToast, setIaLoading, setIaStep, setIaError, db, setDoc, doc }) {
-  setIaLoading(true); setIaError("");
-
-  const bilans = [];
-  documents.forEach(d => d.files?.forEach(f => bilans.push({ url: f.url, name: f.name, type: f.type })));
-  anamneses.forEach(a => a.bilans?.forEach(b => bilans.push({ url: b.url, name: b.name, type: b.type })));
-
-  if (bilans.length === 0) {
-    setIaError("Aucun bilan ou document trouvé. Demande à " + selected.prenom + " d'uploader son bilan depuis son espace.");
-    setIaLoading(false); return;
-  }
-
-  const anamneseTexte = anamneses.map(a => {
-    if (!a.form) return "";
-    const f = a.form;
-    return [
-      f.problematique && `Problématique : ${f.problematique}`,
-      f.objectifs3mois && `Objectifs : ${f.objectifs3mois}`,
-      f.maladiesChroniques && `Antécédents : ${f.maladiesChroniques}`,
-      f.medicaments && `Médicaments : ${f.medicaments}`,
-      f.complementsActuels && `Compléments actuels : ${f.complementsActuels}`,
-      f.qualiteSommeil && `Sommeil : ${f.qualiteSommeil}/10`,
-      f.niveauStress && `Stress : ${f.niveauStress}/10`,
-      f.dureeCycle && `Cycle : ${f.dureeCycle}j / règles ${f.dureeRegles}j`,
-      f.intensiteDouleurs && `Douleurs : ${f.intensiteDouleurs}/10 — ${f.descriptionDouleurs}`,
-      f.petitDejeunerType && `Petit-dej : ${f.petitDejeunerType}`,
-      f.dejeunerType && `Déjeuner : ${f.dejeunerType}`,
-      f.dinerType && `Dîner : ${f.dinerType}`,
-    ].filter(Boolean).join("\n");
-  }).join("\n\n");
-
-  const dernierSuivi = entries.length > 0 ? (() => {
-    const e = entries[entries.length - 1];
-    return [
-      e.weekLabel,
-      e.cyclePhase && `Phase cycle : ${e.cyclePhase}`,
-      ...TI.map(i => e.scores?.[i.key] ? `${i.label} : ${e.scores[i.key]}/5${e.notes?.[i.key] ? ` (${e.notes[i.key]})` : ""}` : null).filter(Boolean),
-      e.humeur_libre && `Humeur : ${e.humeur_libre}`,
-      e.confidences && `Ajout : ${e.confidences}`,
-    ].filter(Boolean).join("\n");
-  })() : "Pas encore de suivi rempli.";
-
-  const toBase64 = async (url) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      return new Promise((res2, rej) => {
-        const r = new FileReader();
-        r.onload = () => res2(r.result.split(",")[1]);
-        r.onerror = rej;
-        r.readAsDataURL(blob);
-      });
-    } catch { return null; }
-  };
-
-  setIaStep("Chargement des bilans…");
-  const docsContent = [];
-  const pdfs = bilans.filter(b => b.type?.includes("pdf") || b.url?.includes(".pdf")).slice(0, 3);
-  const images = bilans.filter(b => b.type?.includes("image")).slice(0, 2);
-
-  for (const pdf of pdfs) {
-    const b64 = await toBase64(pdf.url);
-    if (b64) docsContent.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 }, title: pdf.name });
-  }
-  for (const img of images) {
-    const b64 = await toBase64(img.url);
-    if (b64) docsContent.push({ type: "image", source: { type: "base64", media_type: img.type || "image/jpeg", data: b64 } });
-  }
-
-  const SYSTEM_CLIENT = getSystemClient(selected.prenom);
-  const SYSTEM_PRAT = getSystemPraticienne(selected.prenom);
-
-  try {
-    setIaStep("Génération du protocole cliente…");
-    const r1 = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        max_tokens: 4000,
-        system: SYSTEM_CLIENT,
-        messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi hebdomadaire :\n${dernierSuivi}\n\nGénère le protocole cliente vulgarisé et bienveillant.` },
-          ...docsContent,
-        ]}],
-      }),
-    });
-    const d1 = await r1.json();
-    const protocoleCliente = d1.content?.find(b => b.type === "text")?.text || "";
-
-    setIaStep("Génération du protocole praticienne…");
-    const r2 = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        max_tokens: 4000,
-        system: SYSTEM_PRAT,
-        messages: [{ role: "user", content: [
-          { type: "text", text: `Cliente : ${selected.prenom}\n\nAnamnèse :\n${anamneseTexte || "Non disponible"}\n\nDernier suivi :\n${dernierSuivi}\n\nGénère le protocole praticienne technique et détaillé.` },
-          ...docsContent,
-        ]}],
-      }),
-    });
-    const d2 = await r2.json();
-    const protocolePraticienne = d2.content?.find(b => b.type === "text")?.text || "";
-
-    setNewProtocole({ titre: `Protocole n°${protocoles.length + 1} — ${selected.prenom}`, contenu: protocoleCliente });
-
-    if (protocolePraticienne) {
-      await setDoc(doc(db, "notes_privees", `proto_ia_${selected.uid}`), {
-        clientUid: selected.uid, type: "protocole_praticienne_ia",
-        text: protocolePraticienne, date: new Date().toISOString(),
-      });
-      setProtoPrat(protocolePraticienne);
-    }
-
-    setIaStep("");
-    showToast("Protocoles générés ✓ Relis avant d'envoyer 🌿");
-  } catch (e) {
-    setIaError("Erreur lors de la génération : " + e.message);
-  }
-  setIaLoading(false);
-}
-
-// ─── PRATICIENNE ──────────────────────────────────────────────────────────────
 
 function Praticienne({ user, onLogout }) {
   const [clients,setClients]=useState([]);const [recherche,setRecherche]=useState("");
@@ -999,9 +1021,13 @@ function Praticienne({ user, onLogout }) {
   const [entries,setEntries]=useState([]);const [messages,setMessages]=useState([]);
   const [anamneses,setAnamneses]=useState([]);const [protocoles,setProtocoles]=useState([]);
   const [documents,setDocuments]=useState([]);const [newMsg,setNewMsg]=useState("");
-  const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
+  const [allMessages,setAllMessages]=useState([]);const [recentActivity,setRecentActivity]=useState([]);
+  const [msgConv,setMsgConv]=useState(null);const [msgText,setMsgText]=useState('');
+  const [sendingMsg,setSendingMsg]=useState(false);const [convMessages,setConvMessages]=useState([]);
   const [loading,setLoading]=useState(true);const [sending,setSending]=useState(false);
-  const [activeTab,setActiveTab]=useState(null);const [editInfos,setEditInfos]=useState(false);const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);const [mainView,setMainView]=useState("profil");
+  const [activeTab,setActiveTab]=useState(null);const [editInfos,setEditInfos]=useState(false);
+  const [infosForm,setInfosForm]=useState({});const [savingInfos,setSavingInfos]=useState(false);
+  const [mainView,setMainView]=useState("profil");
   const [showNotifPanel,setShowNotifPanel]=useState(false);const [seenCount,setSeenCount]=useState(0);
   const [newProtocole,setNewProtocole]=useState({titre:"",contenu:""});
   const [sendingProtocole,setSendingProtocole]=useState(false);
@@ -1026,9 +1052,12 @@ function Praticienne({ user, onLogout }) {
   const [iaLoading,setIaLoading]=useState(false);
   const [iaStep,setIaStep]=useState("");
   const [iaError,setIaError]=useState("");
-
-  // ── MODIFICATION 3 : état pour les notifs lues ──
   const [clearedActivity,setClearedActivity]=useState([]);
+  // Nouveau : réponse praticienne sur suivi
+  const [reponseEnCours,setReponseEnCours]=useState({});
+  const [savingReponse,setSavingReponse]=useState({});
+  // Onglet journal alimentaire
+  const [journalEntryIdx,setJournalEntryIdx]=useState(0);
 
   const showToast=useCallback((msg)=>setToast(msg),[]);
   const getDefaultTitre=(prenom,nb)=>`Protocole n°${nb+1} — ${prenom}`;
@@ -1074,11 +1103,23 @@ function Praticienne({ user, onLogout }) {
   },[]);
 
   const handleGenererIA=()=>genererProtocolesIA({selected,documents,anamneses,entries,protocoles,setNewProtocole,setProtoPrat,showToast,setIaLoading,setIaStep,setIaError,db,setDoc,doc});
-
   const saveProtoPrat=async()=>{if(!protoPrat.trim()||!selected)return;setSavingProtoPrat(true);await setDoc(doc(db,"notes_privees",`proto_${selected.uid}`),{clientUid:selected.uid,type:"protocole_praticienne",text:protoPrat.trim(),date:new Date().toISOString()});setSavingProtoPrat(false);showToast("Protocole praticienne enregistré ✓");};
   const saveNote=async()=>{if(!privateNotes.trim())return;setSavingNote(true);await addDoc(collection(db,"notes_privees"),{clientUid:selected.uid,clientPrenom:selected.prenom,text:privateNotes.trim(),date:new Date().toISOString()});setPrivateNotes("");setSavingNote(false);showToast("Note enregistrée ✓");};
   const deleteNote=async(id)=>{await deleteDoc(doc(db,"notes_privees",id));};
   const saveStatut=async(uid,statut)=>{await updateDoc(doc(db,"users",uid),{statut});};
+
+  // Répondre à un commentaire cliente sur un suivi
+  const envoyerReponse=async(entryId)=>{
+    const rep=reponseEnCours[entryId];
+    if(!rep?.trim())return;
+    setSavingReponse(p=>({...p,[entryId]:true}));
+    await updateDoc(doc(db,"entries",entryId),{reponsePraticienne:rep.trim(),reponseDate:new Date().toISOString()});
+    try{const entry=entries.find(e=>e.id===entryId);await sendEmail(EMAILJS_TEMPLATE_BIENVENUE,{prenom:selected.prenom,action:"a répondu à ton suivi",to_email:selected.email});}catch{}
+    setReponseEnCours(p=>({...p,[entryId]:""}));
+    setSavingReponse(p=>({...p,[entryId]:false}));
+    showToast("Réponse envoyée ✓");
+  };
+
   const createClient=async()=>{
     if(!newClientForm.prenom||!newClientForm.email||!newClientForm.password)return;
     setCreatingClient(true);
@@ -1105,7 +1146,6 @@ function Praticienne({ user, onLogout }) {
   const sendMsg=async()=>{if(!newMsg.trim())return;setSending(true);await addDoc(collection(db,"messages"),{toUid:selected.uid,toEmail:selected.email,toPrenom:selected.prenom,text:newMsg.trim(),date:new Date().toISOString()});try{await sendEmail(EMAILJS_TEMPLATE,{prenom:selected.prenom,to_email:selected.email});}catch{}setNewMsg("");setSending(false);showToast("Message envoyé ✓");};
   const deleteProtocole=async(id)=>{if(!window.confirm("Supprimer ce protocole ?"))return;await deleteDoc(doc(db,"protocoles",id));showToast("Protocole supprimé");};
 
-  // ── MODIFICATION 3 : nombre de notifs non lues (hors cleared) ──
   const visibleActivity = recentActivity.filter(a => !clearedActivity.includes(a.id));
   const unreadCount = visibleActivity.length > seenCount ? visibleActivity.length - seenCount : 0;
 
@@ -1117,7 +1157,6 @@ function Praticienne({ user, onLogout }) {
   return (
     <div style={{minHeight:"100vh",background:P.pBg,fontFamily:P.sans,paddingBottom:80}}>
       {toast&&<Toast message={toast} onClose={()=>setToast("")}/>}
-
       <div style={pHeader}>
         <div style={{maxWidth:800,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
@@ -1126,7 +1165,6 @@ function Praticienne({ user, onLogout }) {
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {selected&&mainView==="fiche"&&<button onClick={()=>{setSelected(null);setMainView("clients");}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:12,fontFamily:P.sans,cursor:"pointer"}}>← Retour</button>}
-            {/* ── MODIFICATION 3 : cloche avec bouton "Tout effacer" ── */}
             <div style={{position:"relative"}}>
               <button onClick={()=>{setSeenCount(visibleActivity.length);setShowNotifPanel(p=>!p)}} style={{background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:20,padding:"7px 14px",color:P.pTextMid,fontSize:15,fontFamily:P.sans,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 🔔{unreadCount>0&&<span style={{background:P.pAccent,color:"#1C1410",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{unreadCount}</span>}
@@ -1135,14 +1173,9 @@ function Praticienne({ user, onLogout }) {
                 <div style={{position:"absolute",top:44,right:0,width:290,background:"#2A1E14",border:`1px solid ${P.pBorder}`,borderRadius:16,padding:16,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                     <p style={{fontFamily:P.serif,fontSize:15,color:P.pText}}>Activité récente</p>
-                    {visibleActivity.length>0&&(
-                      <button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setSeenCount(0);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>
-                        Tout effacer
-                      </button>
-                    )}
+                    {visibleActivity.length>0&&<button onClick={()=>{setClearedActivity(recentActivity.map(a=>a.id));setSeenCount(0);}} style={{background:"none",border:"none",color:P.pTextDim,fontSize:11,fontFamily:P.sans,cursor:"pointer",textDecoration:"underline"}}>Tout effacer</button>}
                   </div>
-                  {visibleActivity.length===0
-                    ?<p style={{color:P.pTextDim,fontSize:13}}>Aucune activité 🌿</p>
+                  {visibleActivity.length===0?<p style={{color:P.pTextDim,fontSize:13}}>Aucune activité 🌿</p>
                     :visibleActivity.slice(0,8).map((a,i)=>{
                       const prenom=a.userPrénom||a.userPrenom||a.clientPrenom||"—";
                       const icons={suivi:"📝",anamnese:"📋",document:"📁"};
@@ -1156,11 +1189,10 @@ function Praticienne({ user, onLogout }) {
                             <p style={{fontSize:12,color:"rgba(242,232,218,0.8)"}}>{icons[a.type]} <span style={{color:P.pAccent}}>{prenom}</span> {labels[a.type]}</p>
                             <p style={{fontSize:10,color:"rgba(242,232,218,0.3)",marginTop:2}}>{timeLabel}</p>
                           </div>
-                          <button onClick={()=>setClearedActivity(prev=>[...prev,a.id])} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}} title="Masquer">×</button>
+                          <button onClick={()=>setClearedActivity(prev=>[...prev,a.id])} style={{background:"none",border:"none",color:P.pTextDim,fontSize:16,cursor:"pointer",lineHeight:1,flexShrink:0,padding:"0 2px"}}>×</button>
                         </div>
                       );
-                    })
-                  }
+                    })}
                 </div>
               )}
             </div>
@@ -1223,11 +1255,7 @@ function Praticienne({ user, onLogout }) {
                 const lastMsg=[...allMessages].filter(m=>m.userUid===c.uid||m.toUid===c.uid).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
                 const isActive=msgConv?.uid===c.uid;
                 return(
-                  <button key={c.uid} onClick={async()=>{
-                    setMsgConv(c);
-                    const qc=query(collection(db,"messages"),where("userUid","==",c.uid),orderBy("date","asc"));
-                    onSnapshot(qc,s=>setConvMessages(s.docs.map(d=>({id:d.id,...d.data()}))));
-                  }} style={{background:isActive?P.pAccentDim:P.pSurface,border:`1px solid ${isActive?P.pAccentBorder:P.pBorder}`,borderRadius:12,padding:"12px 14px",textAlign:"left",cursor:"pointer",transition:"all 0.2s"}}>
+                  <button key={c.uid} onClick={async()=>{setMsgConv(c);const qc=query(collection(db,"messages"),where("userUid","==",c.uid),orderBy("date","asc"));onSnapshot(qc,s=>setConvMessages(s.docs.map(d=>({id:d.id,...d.data()}))));}} style={{background:isActive?P.pAccentDim:P.pSurface,border:`1px solid ${isActive?P.pAccentBorder:P.pBorder}`,borderRadius:12,padding:"12px 14px",textAlign:"left",cursor:"pointer",transition:"all 0.2s"}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                       <p style={{color:isActive?P.pAccent:P.pText,fontSize:13,fontWeight:500}}>{c.prenom} {c.nom||""}</p>
                       {lastMsg&&<p style={{color:P.pTextDim,fontSize:10}}>{new Date(lastMsg.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</p>}
@@ -1235,12 +1263,10 @@ function Praticienne({ user, onLogout }) {
                     {lastMsg&&<p style={{color:P.pTextDim,fontSize:11,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",maxWidth:180}}>{lastMsg.from==="praticienne"?"Toi : ":""}{lastMsg.text}</p>}
                   </button>
                 );
-              })
-            }
+              })}
           </div>
           <div style={{flex:1,display:"flex",flexDirection:"column",background:P.pSurface,borderRadius:16,border:`1px solid ${P.pBorder}`,overflow:"hidden"}}>
-            {!msgConv
-              ?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{color:P.pTextDim,fontSize:13}}>Sélectionne une conversation 🌿</p></div>
+            {!msgConv?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><p style={{color:P.pTextDim,fontSize:13}}>Sélectionne une conversation 🌿</p></div>
               :<>
                 <div style={{padding:"14px 18px",borderBottom:`1px solid ${P.pBorder}`,display:"flex",alignItems:"center",gap:12}}>
                   <div style={{width:36,height:36,borderRadius:"50%",background:P.pAccentDim,display:"flex",alignItems:"center",justifyContent:"center",color:P.pAccent,fontWeight:600,fontSize:14}}>{msgConv.prenom?.[0]}</div>
@@ -1248,32 +1274,15 @@ function Praticienne({ user, onLogout }) {
                 </div>
                 <div style={{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
                   {convMessages.length===0?<p style={{color:P.pTextDim,fontSize:13,textAlign:"center",marginTop:20}}>Aucun message encore 🌿</p>
-                    :convMessages.map(m=>{
-                      const isMe=m.from==="praticienne";
-                      return(
-                        <div key={m.id} style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start"}}>
-                          <div style={{maxWidth:"75%",background:isMe?P.pAccentDim:P.pSurface2,border:`1px solid ${isMe?P.pAccentBorder:P.pBorder}`,borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px"}}>
-                            <p style={{color:isMe?P.pAccent:P.pText,fontSize:13,lineHeight:1.6}}>{m.text}</p>
-                            <p style={{color:P.pTextDim,fontSize:10,marginTop:4,textAlign:isMe?"right":"left"}}>{new Date(m.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  }
+                    :convMessages.map(m=>{const isMe=m.from==="praticienne";return(<div key={m.id} style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",background:isMe?P.pAccentDim:P.pSurface2,border:`1px solid ${isMe?P.pAccentBorder:P.pBorder}`,borderRadius:isMe?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"10px 14px"}}><p style={{color:isMe?P.pAccent:P.pText,fontSize:13,lineHeight:1.6}}>{m.text}</p><p style={{color:P.pTextDim,fontSize:10,marginTop:4,textAlign:isMe?"right":"left"}}>{new Date(m.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>);})}
                 </div>
                 <div style={{padding:"12px 18px",borderTop:`1px solid ${P.pBorder}`,display:"flex",gap:10,alignItems:"flex-end"}}>
                   <textarea value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();document.getElementById("send-msg-btn").click();}}} placeholder={`Écrire à ${msgConv.prenom}…`} rows={2} style={{flex:1,background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,resize:"none",outline:"none"}}/>
-                  <button id="send-msg-btn" disabled={!msgText.trim()||sendingMsg} onClick={async()=>{
-                    if(!msgText.trim())return;
-                    setSendingMsg(true);
-                    await addDoc(collection(db,"messages"),{userUid:msgConv.uid,toPrenom:msgConv.prenom,toUid:msgConv.uid,text:msgText.trim(),date:new Date().toISOString(),from:"praticienne",read:false});
-                    setMsgText("");setSendingMsg(false);
-                  }} style={{background:P.pAccent,color:"#1C1410",border:"none",borderRadius:12,padding:"10px 16px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap",opacity:msgText.trim()?1:0.5}}>
+                  <button id="send-msg-btn" disabled={!msgText.trim()||sendingMsg} onClick={async()=>{if(!msgText.trim())return;setSendingMsg(true);await addDoc(collection(db,"messages"),{userUid:msgConv.uid,toPrenom:msgConv.prenom,toUid:msgConv.uid,text:msgText.trim(),date:new Date().toISOString(),from:"praticienne",read:false});setMsgText("");setSendingMsg(false);}} style={{background:P.pAccent,color:"#1C1410",border:"none",borderRadius:12,padding:"10px 16px",fontFamily:P.sans,fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap",opacity:msgText.trim()?1:0.5}}>
                     {sendingMsg?"…":"Envoyer →"}
                   </button>
                 </div>
-              </>
-            }
+              </>}
           </div>
         </div>
       )}
@@ -1324,6 +1333,7 @@ function Praticienne({ user, onLogout }) {
             </div>
           </div>
 
+          {/* Onglets principaux */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
             {[
               {key:"infos",icon:"👤",label:"Infos"},
@@ -1352,20 +1362,24 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
+          {/* Résumé statut */}
           <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20,padding:"10px 14px",background:P.pSurface,borderRadius:12,border:`0.5px solid ${P.pBorder}`,boxShadow:P.shadowInner}}>
             {[
               anamneses.length>0&&{label:"Questionnaire rempli",col:P.pGreen,dot:"✓"},
               protocoles.length>0&&{label:`${protocoles.length} protocole${protocoles.length>1?"s":""} envoyé${protocoles.length>1?"s":""}`,col:P.pAccent,dot:"🌿"},
-              messages.filter(m=>!m.read&&m.from!=="praticienne").length>0&&{label:`${messages.filter(m=>!m.read&&m.from!=="praticienne").length} message${messages.filter(m=>!m.read&&m.from!=="praticienne").length>1?"s":""} non lu${messages.filter(m=>!m.read&&m.from!=="praticienne").length>1?"s":""}`,col:"#E8A040",dot:"💬"},
+              messages.filter(m=>!m.read&&m.from!=="praticienne").length>0&&{label:`${messages.filter(m=>!m.read&&m.from!=="praticienne").length} message${messages.filter(m=>!m.read&&m.from!=="praticienne").length>1?"s":""} non lu`,col:"#E8A040",dot:"💬"},
               {label:`${entries.length} semaine${entries.length>1?"s":""} de suivi`,col:P.pTextDim,dot:"📝"},
+              // Commentaire non répondu
+              entries.filter(e=>e.commentaireCliente&&!e.reponsePraticienne).length>0&&{label:`${entries.filter(e=>e.commentaireCliente&&!e.reponsePraticienne).length} commentaire${entries.filter(e=>e.commentaireCliente&&!e.reponsePraticienne).length>1?"s":""} sans réponse`,col:"#E8A040",dot:"💬"},
             ].filter(Boolean).map((s,i)=>(
               <span key={i} style={{fontSize:11,color:s.col,display:"flex",alignItems:"center",gap:4}}>
                 <span>{s.dot}</span>{s.label}
-                {i<3&&<span style={{color:P.pBorder,marginLeft:4}}>·</span>}
+                {i<4&&<span style={{color:P.pBorder,marginLeft:4}}>·</span>}
               </span>
             ))}
           </div>
 
+          {/* Profils de suivi */}
           <details style={{marginBottom:16}}>
             <summary style={{color:P.pTextDim,fontSize:11,cursor:"pointer",padding:"8px 0",listStyle:"none",display:"flex",alignItems:"center",gap:6}}>
               <span style={{color:P.pAccent}}>⚙️</span>
@@ -1383,6 +1397,7 @@ function Praticienne({ user, onLogout }) {
             </div>
           </details>
 
+          {/* ── ONGLET INFOS ── */}
           {activeTab==="infos"&&(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1396,7 +1411,7 @@ function Praticienne({ user, onLogout }) {
                   <p style={{color:P.pTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>{label}</p>
                   {editInfos&&!ro
                     ?<input value={infosForm[key]||""} onChange={e=>setInfosForm(p=>({...p,[key]:e.target.value}))} placeholder={placeholder||label} style={{width:"100%",background:P.pSurface2,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",color:P.pText,fontFamily:P.sans,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-                    :<div style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><p style={{color:selected[key]?P.pText:P.pTextDim,fontSize:13,fontFamily:P.sans}}>{selected[key]||"—"}</p><button onClick={()=>navigator.clipboard.writeText(selected[key]||"")} style={{background:"none",border:"none",color:P.pTextDim,cursor:"pointer",fontSize:12,padding:"2px 6px"}} title="Copier">📋</button></div>
+                    :<div style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><p style={{color:selected[key]?P.pText:P.pTextDim,fontSize:13,fontFamily:P.sans}}>{selected[key]||"—"}</p><button onClick={()=>navigator.clipboard.writeText(selected[key]||"")} style={{background:"none",border:"none",color:P.pTextDim,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>📋</button></div>
                   }
                 </div>
               ))}
@@ -1404,27 +1419,107 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
+          {/* ── ONGLET SUIVIS ── avec commentaires + questions profil */}
           {activeTab==="suivis"&&(
             <div>
               {entries.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli de suivi.`} theme="p"/>
                 :[...entries].reverse().map(e=>{
                   const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean),avg=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null,sc=avg?SC.find(x=>x.v===Math.round(avg)):null;
-                  return(<div key={e.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{color:P.pText,fontWeight:500}}>{e.weekLabel}</p><p style={{color:P.pTextDim,fontSize:12}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p></div><ScoreDot value={avg?Math.round(avg):null} size={40}/></div>{e.complementsPris&&Object.keys(e.complementsPris).length>0&&(<div style={{marginBottom:10}}><p style={{color:P.pGreen,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Compléments</p>{Object.entries(e.complementsPris).map(([comp,statut])=>{const colors={"Pris régulièrement":P.pGreen,"Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"};return<div key={comp} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",background:P.pSurface2,borderRadius:8,marginBottom:4}}><span style={{color:P.pTextMid,fontSize:13}}>{comp}</span><span style={{color:colors[statut]||P.pTextDim,fontSize:12,fontWeight:500}}>{statut}</span></div>;})}</div>)}{e.cyclePhase&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>Phase : {e.cyclePhase}</p>{e.cycleNote&&<p style={{color:P.pTextMid,fontSize:13}}>{e.cycleNote}</p>}</div>}{TI.filter(i=>e.scores?.[i.key]).map(i=>{const sc2=SC.find(x=>x.v===e.scores[i.key]);return<div key={i.key} style={{background:P.pSurface2,borderRadius:8,padding:"8px 12px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:e.notes?.[i.key]?4:0}}><span style={{color:P.pTextMid,fontSize:13}}>{i.icon} {i.label}</span><span style={{color:sc2?.color||P.pTextDim,fontSize:12,fontWeight:500}}>{sc2?.label}</span></div>{e.notes?.[i.key]&&<p style={{color:P.pTextDim,fontSize:12,fontStyle:"italic"}}>{e.notes[i.key]}</p>}</div>;})} {e.humeur_libre&&<div style={{background:P.pGreenDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pGreen,fontSize:10,marginBottom:4}}>Humeur</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.humeur_libre}</p></div>}{e.confidences&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px"}}><p style={{color:P.pAccent,fontSize:10,marginBottom:4}}>Ajout</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.confidences}</p></div>}</div>);
+                  return(
+                    <div key={e.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"16px 18px",marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                        <div><p style={{color:P.pText,fontWeight:500}}>{e.weekLabel}</p><p style={{color:P.pTextDim,fontSize:12}}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p></div>
+                        <ScoreDot value={avg?Math.round(avg):null} size={40}/>
+                      </div>
+                      {/* Compléments */}
+                      {e.complementsPris&&Object.keys(e.complementsPris).length>0&&(<div style={{marginBottom:10}}><p style={{color:P.pGreen,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Compléments</p>{Object.entries(e.complementsPris).map(([comp,statut])=>{const colors={"Pris régulièrement":P.pGreen,"Pris irrégulièrement":"#B8A05A","Pas pris":"#B5583A"};return<div key={comp} style={{display:"flex",justifyContent:"space-between",padding:"6px 12px",background:P.pSurface2,borderRadius:8,marginBottom:4}}><span style={{color:P.pTextMid,fontSize:13}}>{comp}</span><span style={{color:colors[statut]||P.pTextDim,fontSize:12,fontWeight:500}}>{statut}</span></div>;})}</div>)}
+                      {/* Phase cycle */}
+                      {e.cyclePhase&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pAccent,fontSize:12,marginBottom:4}}>Phase : {e.cyclePhase}</p>{e.cycleNote&&<p style={{color:P.pTextMid,fontSize:13}}>{e.cycleNote}</p>}</div>}
+                      {/* Scores tronc commun */}
+                      {TI.filter(i=>e.scores?.[i.key]).map(i=>{const sc2=SC.find(x=>x.v===e.scores[i.key]);return<div key={i.key} style={{background:P.pSurface2,borderRadius:8,padding:"8px 12px",marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:e.notes?.[i.key]?4:0}}><span style={{color:P.pTextMid,fontSize:13}}>{i.icon} {i.label}</span><span style={{color:sc2?.color||P.pTextDim,fontSize:12,fontWeight:500}}>{sc2?.label}</span></div>{e.notes?.[i.key]&&<p style={{color:P.pTextDim,fontSize:12,fontStyle:"italic"}}>{e.notes[i.key]}</p>}</div>;})}
+                      {/* Scores profil spécifique */}
+                      {e.scoresProfi&&Object.keys(e.scoresProfi).length>0&&(
+                        <div style={{marginTop:8,marginBottom:8}}>
+                          <p style={{color:P.pGreen,fontSize:10,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>🎯 Suivi spécifique</p>
+                          {Object.entries(e.scoresProfi).map(([key,val])=>{
+                            const q = Object.values(QUESTIONS_PROFIL).flat().find(q=>q.key===key);
+                            if(!q||!val) return null;
+                            const sc3 = typeof val === "number" ? SC.find(x=>x.v===val) : null;
+                            return<div key={key} style={{background:P.pSurface2,borderRadius:8,padding:"8px 12px",marginBottom:4}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:P.pTextMid,fontSize:12}}>{q.icon} {q.label}</span><span style={{color:sc3?.color||P.pTextDim,fontSize:12,fontWeight:500}}>{sc3?.label||String(val)}</span></div></div>;
+                          })}
+                        </div>
+                      )}
+                      {/* Humeur */}
+                      {e.humeur_libre&&<div style={{background:P.pGreenDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pGreen,fontSize:10,marginBottom:4}}>Humeur</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.humeur_libre}</p></div>}
+                      {/* Confidences */}
+                      {e.confidences&&<div style={{background:P.pAccentDim,borderRadius:8,padding:"10px 14px",marginBottom:8}}><p style={{color:P.pAccent,fontSize:10,marginBottom:4}}>Ajout</p><p style={{color:P.pText,fontSize:13,lineHeight:1.6}}>{e.confidences}</p></div>}
+                      {/* Commentaire cliente + réponse */}
+                      {e.commentaireCliente&&(
+                        <div style={{background:"rgba(122,158,130,0.08)",border:`1px solid ${P.pGreen}33`,borderRadius:10,padding:"12px 14px",marginTop:10}}>
+                          <p style={{color:P.pGreen,fontSize:11,fontWeight:600,marginBottom:6}}>💬 Commentaire de {selected.prenom}</p>
+                          <p style={{color:P.pText,fontSize:13,lineHeight:1.6,marginBottom:10}}>{e.commentaireCliente}</p>
+                          {e.reponsePraticienne
+                            ? <div style={{background:P.pAccentDim,borderRadius:8,padding:"8px 12px"}}><p style={{color:P.pAccent,fontSize:11,marginBottom:4}}>Ta réponse</p><p style={{color:P.pText,fontSize:13}}>{e.reponsePraticienne}</p></div>
+                            : <div>
+                                <textarea value={reponseEnCours[e.id]||""} onChange={ev=>setReponseEnCours(p=>({...p,[e.id]:ev.target.value}))} placeholder="Répondre à ce commentaire…" rows={2} style={{...iP("p"),fontSize:12,resize:"vertical",marginBottom:8}}/>
+                                <Btn onClick={()=>envoyerReponse(e.id)} disabled={!reponseEnCours[e.id]?.trim()||savingReponse[e.id]} variant="sage" small>{savingReponse[e.id]?"Envoi…":"Répondre"}</Btn>
+                              </div>
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
                 })}
             </div>
           )}
 
+          {/* ── ONGLET JOURNAL ALIMENTAIRE ── */}
+          {activeTab==="suivis"&&entries.length>0&&(
+            <div style={{marginTop:24}}>
+              <p style={{color:P.pTextDim,fontSize:10,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:12}}>🥗 Journal alimentaire</p>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+                {[...entries].reverse().slice(0,8).map((e,i)=>(
+                  <button key={e.id} onClick={()=>setJournalEntryIdx(i)} style={{padding:"6px 12px",borderRadius:20,border:`1px solid ${journalEntryIdx===i?P.pAccentBorder:P.pBorder}`,background:journalEntryIdx===i?P.pAccentDim:"transparent",color:journalEntryIdx===i?P.pAccent:P.pTextMid,fontSize:11,fontFamily:P.sans}}>
+                    {e.weekLabel||new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
+                  </button>
+                ))}
+              </div>
+              {(()=>{
+                const e = [...entries].reverse()[journalEntryIdx];
+                if(!e?.journalAlimentaire) return <EmptyState message="Pas de journal alimentaire pour cette semaine." theme="p"/>;
+                return(
+                  <div style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,overflow:"hidden"}}>
+                    {JOURS_SEMAINE.map(jour=>{
+                      const repas = e.journalAlimentaire[jour];
+                      const hasData = repas?.some(r=>r.texte||r.heure);
+                      return(
+                        <div key={jour} style={{borderBottom:`1px solid ${P.pBorder}`,padding:"12px 16px"}}>
+                          <p style={{color:hasData?P.pText:P.pTextDim,fontSize:13,fontWeight:hasData?500:400,marginBottom:hasData?8:0}}>{jour}</p>
+                          {hasData&&repas.map((r,i)=>(
+                            r.texte&&<div key={i} style={{display:"flex",gap:10,marginBottom:4,alignItems:"flex-start"}}>
+                              <span style={{color:P.pAccent,fontSize:11,fontWeight:600,minWidth:40,flexShrink:0}}>{r.heure||r.repas}</span>
+                              <p style={{color:P.pTextMid,fontSize:12,lineHeight:1.5}}>{r.texte}</p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ── ONGLET ÉVOLUTION ── */}
           {activeTab==="evolution"&&(
             <div>
               {entries.length<2?<EmptyState message={`${selected.prenom} n'a pas encore assez de suivis.`} theme="p"/>:(
-                <>
-                  {(()=>{const getAvg=e=>{const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;};const avgFirst=getAvg(entries[0]),avgLast=getAvg(entries[entries.length-1]),diff=avgFirst&&avgLast?(avgLast-avgFirst).toFixed(1):null;return diff?(<div style={{background:diff>0?P.pGreenDim:P.pAccentDim,border:`1px solid ${diff>0?"rgba(122,158,130,0.3)":P.pAccentBorder}`,borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:24}}>{diff>0?"📈":"📉"}</span><div><p style={{color:diff>0?P.pGreen:P.pAccent,fontWeight:500,fontSize:14}}>{diff>0?`+${diff} pts depuis le début`:`${diff} pts depuis le début`}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{entries.length} semaines · moy. {avgFirst?.toFixed(1)} → {avgLast?.toFixed(1)}</p></div></div>):null;})()}
-                  <ChartSelector entries={entries} theme="p"/>
-                </>
+                <>{(()=>{const getAvg=e=>{const vs=TI.map(i=>e.scores?.[i.key]).filter(Boolean);return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;};const avgFirst=getAvg(entries[0]),avgLast=getAvg(entries[entries.length-1]),diff=avgFirst&&avgLast?(avgLast-avgFirst).toFixed(1):null;return diff?(<div style={{background:diff>0?P.pGreenDim:P.pAccentDim,border:`1px solid ${diff>0?"rgba(122,158,130,0.3)":P.pAccentBorder}`,borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:24}}>{diff>0?"📈":"📉"}</span><div><p style={{color:diff>0?P.pGreen:P.pAccent,fontWeight:500,fontSize:14}}>{diff>0?`+${diff} pts depuis le début`:`${diff} pts depuis le début`}</p><p style={{color:P.pTextDim,fontSize:12,marginTop:2}}>{entries.length} semaines · moy. {avgFirst?.toFixed(1)} → {avgLast?.toFixed(1)}</p></div></div>):null;})()}<ChartSelector entries={entries} theme="p"/></>
               )}
             </div>
           )}
 
+          {/* ── ONGLET COMPLÉMENTS ── */}
           {activeTab==="complements"&&(
             <div>
               {clientData?.complements?.length>0?clientData.complements.map((c,i)=>{
@@ -1443,6 +1538,7 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
+          {/* ── ONGLET PROTOCOLE ── */}
           {activeTab==="protocole"&&(
             <div>
               <div style={{background:"rgba(200,133,108,0.08)",border:"1px solid rgba(200,133,108,0.25)",borderRadius:14,padding:"18px 20px",marginBottom:20}}>
@@ -1451,9 +1547,7 @@ function Praticienne({ user, onLogout }) {
                     <p style={{color:P.pAccent,fontSize:13,fontWeight:500,marginBottom:4}}>✦ Générer les protocoles avec l'IA</p>
                     <p style={{color:P.pTextDim,fontSize:12,lineHeight:1.5}}>
                       L'IA analyse les bilans et l'anamnèse de {selected.prenom} et pré-remplit les deux protocoles.{" "}
-                      {documents.reduce((n,d)=>n+(d.files?.length||0),0)+anamneses.reduce((n,a)=>n+(a.bilans?.length||0),0)===0
-                        ?" ⚠️ Aucun bilan disponible pour l'instant."
-                        :` ${documents.reduce((n,d)=>n+(d.files?.length||0),0)+anamneses.reduce((n,a)=>n+(a.bilans?.length||0),0)} document(s) disponible(s).`}
+                      {documents.reduce((n,d)=>n+(d.files?.length||0),0)+anamneses.reduce((n,a)=>n+(a.bilans?.length||0),0)===0?" ⚠️ Aucun bilan disponible pour l'instant.":` ${documents.reduce((n,d)=>n+(d.files?.length||0),0)+anamneses.reduce((n,a)=>n+(a.bilans?.length||0),0)} document(s) disponible(s).`}
                     </p>
                   </div>
                   <button onClick={handleGenererIA} disabled={iaLoading} style={{background:iaLoading?"rgba(200,133,108,0.3)":P.pAccent,color:"#1C1410",border:"none",borderRadius:30,padding:"11px 22px",fontFamily:P.sans,fontWeight:500,fontSize:13,cursor:iaLoading?"not-allowed":"pointer",flexShrink:0,boxShadow:iaLoading?"none":"0 3px 10px rgba(200,133,108,0.3)",transition:"all 0.2s"}}>
@@ -1483,6 +1577,7 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
+          {/* ── ONGLET ANAMNÈSE ── */}
           {activeTab==="anamnese"&&(
             <div>
               <div style={{display:"flex",gap:8,marginBottom:16}}>
@@ -1490,25 +1585,20 @@ function Praticienne({ user, onLogout }) {
                 <Btn onClick={()=>setAnamneseMode("upload")} variant={anamneseMode==="upload"?"primary":"ghost"} theme="p" small>Uploader PDF</Btn>
                 {anamneses.length>0&&anamneses[0].pdfText&&<Btn onClick={()=>downloadAnamnesePDF(anamneses[0],selected.prenom)} variant="ghost" theme="p" small>⬇ Télécharger PDF</Btn>}
               </div>
-              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>:anamneses.map(a=>(<div key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p></div>{a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={fixPdfUrl(b.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}{a.form&&Object.keys(a.form).length>0&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>{[["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(<div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>))}</div>)}</div>)))}
+              {anamneseMode==="view"&&(anamneses.length===0?<EmptyState message={`${selected.prenom} n'a pas encore rempli le questionnaire.`} theme="p"/>:anamneses.map(a=>(<div key={a.id}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><p style={{color:P.pTextDim,fontSize:12}}>Rempli le {new Date(a.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}{a.saisieParPraticienne&&<span style={{color:P.pAccent,marginLeft:8}}>· Saisi par toi</span>}</p></div>{a.bilans?.length>0&&<div style={{marginBottom:16}}>{a.bilans.map((b,i)=><a key={i} href={fixPdfUrl(b.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:13,textDecoration:"none",marginRight:8,marginBottom:8}}><span>{b.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div>}{a.form&&Object.keys(a.form).length>0&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>{[["Genre",a.form.genre],["Problématique principale",a.form.problematique],["Objectifs 3 mois",a.form.objectifs3mois],["Antécédents médicaux",a.form.maladiesChroniques],["Médicaments",a.form.medicaments],["Compléments actuels",a.form.complementsActuels],["Tour de taille",a.form.tourDeTaille&&`${a.form.tourDeTaille} cm`],["Tour de cou",a.form.tourDeCou&&`${a.form.tourDeCou} cm`],["Sommeil",a.form.qualiteSommeil&&`${a.form.qualiteSommeil}/10`],["Stress",a.form.niveauStress&&`${a.form.niveauStress}/10`],["Cycle",a.form.dureeCycle&&`${a.form.dureeCycle}j / règles ${a.form.dureeRegles}j`],["Douleurs",a.form.intensiteDouleurs&&`${a.form.intensiteDouleurs}/10 — ${a.form.descriptionDouleurs}`]].filter(([_,v])=>v).map(([label,val])=>(<div key={label} style={{display:"flex",gap:12,background:P.pSurface2,borderRadius:8,padding:"10px 14px"}}><span style={{color:P.pTextDim,fontSize:12,minWidth:170,flexShrink:0}}>{label}</span><span style={{color:P.pTextMid,fontSize:13,lineHeight:1.5}}>{val}</span></div>))}</div>)}</div>)))}
               {anamneseMode==="upload"&&(<div style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:18}}><input type="file" multiple accept="image/*,application/pdf" onChange={e=>uploadAnamnesePDF(Array.from(e.target.files))} style={{color:P.pTextMid,fontSize:13,marginBottom:12,display:"block",width:"100%"}}/>{uploadingAnamnese&&<p style={{color:P.pAccent,fontSize:13}}>Upload en cours…</p>}{uploadedAnamnese.length>0&&<div style={{marginTop:12}}>{uploadedAnamnese.map((f,i)=><FileTag key={i} name={f.name} theme="p"/>)}<Btn onClick={saveAnamnesePDF} disabled={savingAnamnese} variant="primary" style={{marginTop:12}}>{savingAnamnese?"Enregistrement…":"Enregistrer dans le dossier"}</Btn></div>}</div>)}
             </div>
           )}
 
-          {activeTab==="documents"&&(
+          {/* ── ONGLET DOCUMENTS ── */}
+          {activeTab==="documents"&&!["anamnese","protocole","complements"].includes(activeTab)&&(
             <div>
               {documents.length===0?<EmptyState message={`Aucun document partagé par ${selected.prenom}.`} theme="p"/>
-                :documents.map(d=>(
-                  <div key={d.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"14px 18px",marginBottom:10}}>
-                    <p style={{color:P.pTextDim,fontSize:11,marginBottom:10}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                      {d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}
-                    </div>
-                  </div>
-                ))}
+                :documents.map(d=>(<div key={d.id} style={{background:P.pSurface,borderRadius:12,border:`1px solid ${P.pBorder}`,padding:"14px 18px",marginBottom:10}}><p style={{color:P.pTextDim,fontSize:11,marginBottom:10}}>{new Date(d.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{d.files?.map((f,i)=><a key={i} href={fixPdfUrl(f.url)} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:8,padding:"7px 12px",color:P.pAccent,fontSize:12,textDecoration:"none"}}><span>{f.type?.includes("image")?"🖼":"📄"}</span><span>{f.name}</span><span style={{opacity:0.6,fontSize:10}}>↓</span></a>)}</div></div>))}
             </div>
           )}
 
+          {/* ── ONGLET NOTES ── */}
           {activeTab==="notes"&&(
             <div>
               <div style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:10,padding:"10px 14px",marginBottom:16}}><p style={{color:P.pAccent,fontSize:11}}>🔒 Ces notes sont uniquement visibles par toi.</p></div>
@@ -1517,12 +1607,7 @@ function Praticienne({ user, onLogout }) {
               {noteHistory.length>0&&(
                 <div>
                   <p style={{color:P.pTextDim,fontSize:11,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}}>Historique des notes</p>
-                  {noteHistory.map(n=>(
-                    <div key={n.id} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:10}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pTextDim,fontSize:11}}>{new Date(n.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p><button onClick={()=>deleteNote(n.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:16,cursor:"pointer",lineHeight:1}}>×</button></div>
-                      <p style={{color:P.pTextMid,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.text}</p>
-                    </div>
-                  ))}
+                  {noteHistory.map(n=>(<div key={n.id} style={{background:P.pSurface,border:`1px solid ${P.pBorder}`,borderRadius:12,padding:"14px 16px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{color:P.pTextDim,fontSize:11}}>{new Date(n.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p><button onClick={()=>deleteNote(n.id)} style={{background:"none",border:"none",color:"#B5583A",fontSize:16,cursor:"pointer",lineHeight:1}}>×</button></div><p style={{color:P.pTextMid,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.text}</p></div>))}
                 </div>
               )}
               <div style={{marginTop:28}}>
@@ -1533,15 +1618,11 @@ function Praticienne({ user, onLogout }) {
             </div>
           )}
 
+          {/* ── ONGLET MESSAGES ── */}
           {activeTab==="message"&&(
             <div>
               {messages.length===0?<EmptyState message={`Aucun message envoyé à ${selected.prenom}.`} theme="p"/>
-                :messages.map(m=>(
-                  <div key={m.id} style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
-                    <p style={{color:P.pText,fontSize:14,lineHeight:1.6}}>{m.text}</p>
-                    <p style={{color:P.pTextDim,fontSize:11,marginTop:6}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p>
-                  </div>
-                ))}
+                :messages.map(m=>(<div key={m.id} style={{background:P.pAccentDim,border:`1px solid ${P.pAccentBorder}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}><p style={{color:P.pText,fontSize:14,lineHeight:1.6}}>{m.text}</p><p style={{color:P.pTextDim,fontSize:11,marginTop:6}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</p></div>))}
               <textarea value={newMsg} onChange={e=>setNewMsg(e.target.value)} placeholder={`Message pour ${selected.prenom}…`} rows={3} style={{...iP("p"),resize:"vertical",marginTop:12,marginBottom:10}}/>
               <Btn onClick={sendMsg} disabled={sending||!newMsg.trim()} variant="primary">{sending?"Envoi…":`Envoyer à ${selected.prenom}`}</Btn>
             </div>
@@ -1555,7 +1636,6 @@ function Praticienne({ user, onLogout }) {
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
-
 export default function App() {
   const [user,setUser]=useState(null);const [checking,setChecking]=useState(true);const [showLanding,setShowLanding]=useState(true);
   useEffect(()=>{
