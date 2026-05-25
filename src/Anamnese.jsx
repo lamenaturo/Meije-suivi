@@ -1,3 +1,4 @@
+import BilansFonctionnels from "./BilansFonctionnels";
 import { useState, useEffect } from "react";
 import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
@@ -23,7 +24,8 @@ const ETAPES = [
   { num: 8, label: "Activité physique & Environnement" },
   { num: 9, label: "Autres systèmes & Examens" },
   { num: 10, label: "Histoire infectieuse & Terrain" },
-  { num: 11, label: "Motivation & Conclusion" },
+  { num: 11, label: "Bilans fonctionnels" },
+  { num: 12, label: "Motivation & Conclusion" },
 ];
 
 const initForm = () => ({
@@ -507,6 +509,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   const [form, setForm] = useState(() => existingData?.form ? { ...initForm(), ...existingData.form } : initForm());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(!!existingData?.id);
+  const [bilanScores, setBilanScores] = useState(existingData?.bilanScores || {});
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [docs, setDocs] = useState(existingData?.bilans || []);
   const [docId, setDocId] = useState(existingData?.id || null);
@@ -523,7 +526,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   useEffect(() => {
     if (!docId) return;
     const timer = setTimeout(async () => {
-      try { await updateDoc(doc(db, "anamneses", docId), { form, bilans: docs, pdfText: generatePdfText(form, user), date: new Date().toISOString() }); }
+      try { await updateDoc(doc(db, "anamneses", docId), { form, bilans: docs, bilanScores, pdfText: generatePdfText(form, user), date: new Date().toISOString() }); }
       catch (e) { console.error("Autosave:", e); }
     }, 1500);
     return () => clearTimeout(timer);
@@ -567,7 +570,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = { userUid: user.uid, userEmail: user.email, userPrenom: user.prénom || user.displayName || user.email?.split("@")[0] || "", date: new Date().toISOString(), form, bilans: docs, pdfText: generatePdfText(form, user) };
+      const data = { userUid: user.uid, userEmail: user.email, userPrenom: user.prénom || user.displayName || user.email?.split("@")[0] || "", date: new Date().toISOString(), form, bilans: docs, bilanScores, pdfText: generatePdfText(form, user) };
       if (docId) { await updateDoc(doc(db, "anamneses", docId), data); }
       else { const ref = await addDoc(collection(db, "anamneses"), data); setDocId(ref.id); }
       setSaved(true);
@@ -979,6 +982,21 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
         )}
 
         {etape === 11 && (
+          <div>
+            <SectionTitle>Bilans fonctionnels ciblés</SectionTitle>
+            <BilansFonctionnels
+              form={form}
+              bilanScores={bilanScores}
+              setBilanScores={setBilanScores}
+            />
+            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
+              <button onClick={() => goToStep(10)} style={{ flex: 1, padding: "13px 20px", borderRadius: 12, border: `1px solid ${C.border2}`, background: C.surface, color: C.textMid, fontSize: 14, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>← Précédent</button>
+              <button onClick={() => goToStep(12)} style={{ flex: 2, padding: "13px 20px", borderRadius: 12, border: "none", background: C.terra, color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>Suivant →</button>
+            </div>
+          </div>
+        )}
+
+        {etape === 12 && (
           <div>
             <SectionTitle>Vision & Motivation</SectionTitle>
             <Field label="Comment tu te vois dans 6 mois si tout se passe bien ?"><Textarea value={form.visionDans6Mois} onChange={set("visionDans6Mois")} placeholder="Décris ton idéal santé dans 6 mois..." rows={3} /></Field>
