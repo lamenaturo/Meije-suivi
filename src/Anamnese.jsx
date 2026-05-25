@@ -22,7 +22,8 @@ const ETAPES = [
   { num: 7, label: "Alimentation & Hydratation" },
   { num: 8, label: "Activité physique & Environnement" },
   { num: 9, label: "Autres systèmes & Examens" },
-  { num: 10, label: "Motivation & Conclusion" },
+  { num: 10, label: "Histoire infectieuse & Terrain" },
+  { num: 11, label: "Motivation & Conclusion" },
 ];
 
 const initForm = () => ({
@@ -91,6 +92,19 @@ const initForm = () => ({
   systemeUrinaire: [], temperatureCorporelle: [],
   autresSymptomes: "", analysesSanguinesRecentes: "", dateLastBilan: "",
   elementsRemarquables: "", analysesSpecifiques: [], autresExamens: "",
+  // Étape 10 — Histoire infectieuse & Terrain
+  infect_ebv: "", infect_ebv_date: "", infect_cmv: "", infect_herpes: "", infect_herpes_freq: "",
+  infect_covidLong: "", infect_covidLong_symptomes: "",
+  infect_lyme: "", infect_lyme_traitement: "",
+  infect_helico: "", infect_helico_traitement: "",
+  infect_parasites: "", infect_parasites_lequel: "",
+  infect_candidose: "", infect_candidose_localisation: "",
+  infect_antibio_total: "", infect_antibio_derniere: "", infect_antibio_molecule: "",
+  infect_ist: "", infect_vih: "",
+  // Ajouts étapes existantes
+  tca: "", traumaConnu: "", suiviPsyActuel: "",
+  cannabis: "", tabacQuantiteLibre: "", alcoolQuantiteLibre: "",
+  antecedentsFamiliauxPsy: "",
   visionDans6Mois: "", motivationChangement: "",
   freins: "", attentesNaturopathe: "", pret: [], infosSup: "", questions: "",
 });
@@ -389,6 +403,7 @@ async function downloadAnamnesePDF(form, user, bilans = []) {
   addRow("Médicaments", valP(form.medicaments)); addRow("Compléments actuels", valP(form.complementsActuels));
   addRow("Autres thérapies", valP(form.autresTherapies)); addRow("Médecin traitant", valP(form.medecinTraitant));
   if (!estHomme) addRow("Gynécologue", valP(form.gyneco));
+  addRow("ATCD familiaux psychiatriques", valP(form.antecedentsFamiliauxPsy));
   addSection("3. Sommeil & Énergie");
   addRow("Coucher/Lever", [form.heureCoucher, form.heureLever].filter(Boolean).join(" — ") || null);
   addRow("Heures sommeil", valP(form.nbreHeuresSommeil) ? form.nbreHeuresSommeil + "h" : null);
@@ -400,7 +415,11 @@ async function downloadAnamnesePDF(form, user, bilans = []) {
   addRow("Niveau stress", valP(form.niveauStress) ? form.niveauStress + "/10" : null);
   addRow("Sources de stress", valP(form.sourceStress)); addRow("Symptômes stress", arrP(form.symptomesStress));
   addRow("Humeur générale", arrP(form.humeurGenerale)); addRow("Anxiété", valP(form.anxieteAngoisses));
-  addRow("Suivi psy", arrP(form.suiviPsy)); addRow("Relaxation", valP(form.techniquesRelaxation));
+  addRow("Suivi psy", arrP(form.suiviPsy));
+  addRow("Suivi psy actuel", valP(form.suiviPsyActuel));
+  addRow("Trauma / choc émotionnel", valP(form.traumaConnu));
+  addRow("TCA", valP(form.tca));
+  addRow("Relaxation", valP(form.techniquesRelaxation));
   if (estHomme) {
     addSection("5. Hormones & Santé masculine");
     addRow("Libido", valP(form.libido) ? form.libido + "/10" : null);
@@ -440,6 +459,9 @@ async function downloadAnamnesePDF(form, user, bilans = []) {
   addSection("7. Alimentation & Hydratation");
   addRow("Régime", arrP(form.regimeAlimentaire)); addRow("Petit-déjeuner", valP(form.petitDejType));
   addRow("Déjeuner", valP(form.dejeunerType)); addRow("Dîner", valP(form.dinerType)); addRow("Eau/j", valP(form.quantiteEau));
+  addRow("Tabac", valP(form.tabacStatut)); addRow("Cigarettes/j", valP(form.tabacQuantite)||valP(form.tabacQuantiteLibre));
+  addRow("Cannabis", valP(form.cannabis));
+  addRow("Alcool", valP(form.alcool)); addRow("Verres/j", valP(form.alcoolQuantite)||valP(form.alcoolQuantiteLibre));
   addRow("Sucre", valP(form.consommationSucre) ? form.consommationSucre+"/10" : null);
   addRow("Laitiers", valP(form.consommationLaitiers) ? form.consommationLaitiers+"/10" : null);
   addRow("Gluten", valP(form.consommationGluten) ? form.consommationGluten+"/10" : null);
@@ -453,7 +475,19 @@ async function downloadAnamnesePDF(form, user, bilans = []) {
   addRow("Urinaire", arrP(form.systemeUrinaire)); addRow("Température", arrP(form.temperatureCorporelle));
   addRow("Autres symptômes", valP(form.autresSymptomes));
   addRow("Analyses sanguines", valP(form.analysesSanguinesRecentes)); addRow("Éléments remarquables", valP(form.elementsRemarquables));
-  addSection("10. Motivation & Conclusion");
+  addSection("10. Histoire infectieuse & Terrain");
+  addRow("EBV / Mono", valP(form.infect_ebv)); addRow("EBV date/suivi", valP(form.infect_ebv_date));
+  addRow("CMV", valP(form.infect_cmv));
+  addRow("Herpès récurrent", valP(form.infect_herpes)); addRow("Fréquence herpès", valP(form.infect_herpes_freq));
+  addRow("Covid long", valP(form.infect_covidLong)); addRow("Symptômes Covid long", valP(form.infect_covidLong_symptomes));
+  addRow("Lyme", valP(form.infect_lyme)); addRow("Traitement Lyme", valP(form.infect_lyme_traitement));
+  addRow("Helicobacter pylori", valP(form.infect_helico));
+  addRow("Parasitose", valP(form.infect_parasites)); addRow("Parasite / traitement", valP(form.infect_parasites_lequel));
+  addRow("Candidose", valP(form.infect_candidose)); addRow("Localisation candidose", valP(form.infect_candidose_localisation));
+  addRow("Cures antibiotiques (vie)", valP(form.infect_antibio_total));
+  addRow("Dernière cure antibio", valP(form.infect_antibio_derniere)); addRow("Molécule", valP(form.infect_antibio_molecule));
+  addRow("IST antécédents", valP(form.infect_ist)); addRow("Dépistage VIH", valP(form.infect_vih));
+  addSection("11. Motivation & Conclusion");
   addRow("Vision 6 mois", valP(form.visionDans6Mois));
   addRow("Motivation", valP(form.motivationChangement) ? form.motivationChangement+"/10" : null);
   addRow("Freins", valP(form.freins)); addRow("Attentes", valP(form.attentesNaturopathe));
@@ -659,6 +693,8 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             <Field label="Hospitalisations importantes"><Input value={form.hospitalisations} onChange={set("hospitalisations")} placeholder="Précise si pertinent" /></Field>
             <Field label="Allergies connues"><Input value={form.allergiesConnues} onChange={set("allergiesConnues")} placeholder="Ex : pénicilline, arachides, pollens..." /></Field>
             <Field label="Antécédents familiaux importants"><Textarea value={form.antecedentsFamiliaux} onChange={set("antecedentsFamiliaux")} placeholder="Maladies chez parents, frères/sœurs..." rows={2} /></Field>
+            <Field label="Antécédents psychiatriques familiaux (dépression, anxiété, addiction, troubles bipolaires, schizophrénie…)"><RadioInline options={["Oui", "Non", "Je ne sais pas", "Je préfère ne pas répondre"]} value={form.antecedentsFamiliauxPsy} onChange={set("antecedentsFamiliauxPsy")} /></Field>
+            {form.antecedentsFamiliauxPsy === "Oui" && <Field label="Précise si tu le souhaites"><Textarea value={form.antecedentsFamiliauxPsyDetail||""} onChange={set("antecedentsFamiliauxPsyDetail")} placeholder="Ex : dépression chez ma mère, addiction chez mon père…" rows={2} /></Field>}
             <SectionTitle>Traitements & Compléments actuels</SectionTitle>
             <Field label="Médicaments actuels (nom, posologie, depuis quand)"><Textarea value={form.medicaments} onChange={set("medicaments")} placeholder="Ex : Lévothyrox 50µg matin depuis 2021..." rows={2} /></Field>
             <Field label="Compléments alimentaires actuels"><Textarea value={form.complementsActuels} onChange={set("complementsActuels")} placeholder="Ex : magnésium, vitamine D, oméga 3..." rows={2} /></Field>
@@ -705,6 +741,9 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             <Field label="Comment décrirais-tu ton humeur générale ?"><CheckGroup options={["Stable et positive", "Variable (hauts et bas)", "Plutôt anxieux(se)", "Plutôt dépressif(ve) / tristesse", "Irritable", "Apathique / manque de motivation"]} value={form.humeurGenerale} onChange={set("humeurGenerale")} columns={2} /></Field>
             <Field label="Ressens-tu de l'anxiété ou des angoisses ?"><Textarea value={form.anxieteAngoisses} onChange={set("anxieteAngoisses")} placeholder="Si oui, dans quelles situations ?..." rows={2} /></Field>
             <Field label="As-tu déjà consulté ou es-tu suivi(e) pour ?"><CheckGroup options={["Anxiété", "Dépression", "Burn-out", "Troubles de l'attention (TDAH)", "Autre trouble psychologique", "Non, jamais"]} value={form.suiviPsy} onChange={set("suiviPsy")} columns={2} /></Field>
+            <Field label="As-tu un suivi psychologique en ce moment ?"><RadioInline options={["Oui", "Non", "Je préfère ne pas répondre"]} value={form.suiviPsyActuel} onChange={set("suiviPsyActuel")} /></Field>
+            <Field label="As-tu vécu un trauma ou choc émotionnel important (deuil, burnout, rupture, accident…) ?"><RadioInline options={["Oui", "Non", "Je préfère ne pas répondre"]} value={form.traumaConnu} onChange={set("traumaConnu")} /></Field>
+            <Field label="As-tu ou as-tu eu des difficultés avec ton comportement alimentaire (TCA) ? (restriction, boulimie, compulsions…)"><RadioInline options={["Oui, actuellement", "Oui, dans le passé", "Non", "Je préfère ne pas répondre"]} value={form.tca} onChange={set("tca")} /></Field>
             <Field label="Pratiques-tu des techniques de relaxation ?"><Input value={form.techniquesRelaxation} onChange={set("techniquesRelaxation")} placeholder="Ex : méditation, yoga, respiration..." /></Field>
             <Field label="Activités qui te ressourcent"><Input value={form.activitesRessourcantes} onChange={set("activitesRessourcantes")} placeholder="Nature, lecture, amis, musique, cuisine..." /></Field>
             <NavButtons />
@@ -741,7 +780,7 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             <Field label="Symptômes prémenstruels (SPM)"><CheckGroup options={["Irritabilité, changements d'humeur", "Anxiété, tristesse", "Fringales (sucre, sel)", "Ballonnements, rétention d'eau", "Seins douloureux ou gonflés", "Fatigue intense", "Maux de tête / Migraines", "Douleurs abdominales", "Acné", "Insomnie", "Aucun symptôme particulier"]} value={form.symptomesSPM} onChange={set("symptomesSPM")} columns={2} /></Field>
             <Scale label="Intensité des douleurs menstruelles (1 = aucune, 10 = insupportable)" value={form.intensiteDouleurs} onChange={set("intensiteDouleurs")} />
             <div style={{ marginTop: 12 }}><Field label="Décris tes douleurs menstruelles"><Textarea value={form.descriptionDouleurs} onChange={set("descriptionDouleurs")} placeholder="Ex : crampes basses ventre J1-J2, irradiant dans le dos..." rows={2} /></Field></div>
-            <Field label="Contraception actuelle"><CheckGroup options={["Pilule contraceptive", "Stérilet hormonal", "Stérilet au cuivre", "Implant", "Anneau vaginal", "Préservatifs uniquement", "Méthodes naturelles", "Aucune contraception", "Autre"]} value={form.contraception} onChange={set("contraception")} columns={2} /></Field>
+            <Field label="Contraception actuelle"><CheckGroup options={["Pilule contraceptive", "Stérilet hormonal", "Stérilet au cuivre", "Implant", "Anneau vaginal", "Préservatifs uniquement", "Symptothermie / Méthodes naturelles", "Aucune contraception", "Autre"]} value={form.contraception} onChange={set("contraception")} columns={2} /></Field>
             <Field label="Depuis combien de temps ?"><Input value={form.dureeContraception} onChange={set("dureeContraception")} placeholder="Ex : 3 ans" /></Field>
             <Field label="Périménopause / Ménopause ?"><RadioGroup options={["Périménopause", "Ménopause", "Ni l'une ni l'autre"]} value={form.perimenopause} onChange={set("perimenopause")} /></Field>
             <Field label="Symptômes hormonaux observés"><CheckGroup options={["Acné (visage, dos, poitrine)", "Pilosité excessive (visage, corps)", "Chute de cheveux", "Peau très sèche ou très grasse", "Bouffées de chaleur", "Sueurs nocturnes", "Sécheresse vaginale", "Baisse de libido", "Prise de poids", "Seins fibrokystiques", "Aucun de ces symptômes"]} value={form.symptomesHormonaux} onChange={set("symptomesHormonaux")} columns={2} /></Field>
@@ -799,8 +838,11 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
             <SectionTitle>Tabac, alcool & produits transformés</SectionTitle>
             <Field label="Fumez-vous ?"><RadioInline options={["Non", "Oui", "Anciennement fumeur/fumeuse"]} value={form.tabacStatut} onChange={set("tabacStatut")} /></Field>
             {form.tabacStatut === "Oui" && <Field label="Nombre de cigarettes par jour"><RadioInline options={["Moins de 5", "5 à 10", "10 à 20", "Plus de 20"]} value={form.tabacQuantite} onChange={set("tabacQuantite")} /></Field>}
+            {form.tabacStatut === "Oui" && <Field label="Précise si besoin (pipe, chicha, roulées…)"><input value={form.tabacQuantiteLibre||""} onChange={e=>set("tabacQuantiteLibre")(e.target.value)} placeholder="Ex : 10 cigarettes roulées / jour..." style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
+            <Field label="Consommation de cannabis ?"><RadioInline options={["Non", "Occasionnel (soirées)", "Régulier (plusieurs fois/semaine)", "Quotidien", "Je préfère ne pas répondre"]} value={form.cannabis} onChange={set("cannabis")} /></Field>
             <Field label="Consommez-vous de l'alcool ?"><RadioGroup options={["Non", "Occasionnellement (week-end)", "Oui, plusieurs fois par semaine", "Oui, tous les jours"]} value={form.alcool} onChange={set("alcool")} /></Field>
             {(form.alcool === "Oui, plusieurs fois par semaine" || form.alcool === "Oui, tous les jours") && <Field label="Nombre de verres par jour"><RadioInline options={["1", "2", "3 à 4", "5 et +"]} value={form.alcoolQuantite} onChange={set("alcoolQuantite")} /></Field>}
+            {form.alcool !== "Non" && form.alcool !== "" && <Field label="Précise si besoin (type, contexte…)"><input value={form.alcoolQuantiteLibre||""} onChange={e=>set("alcoolQuantiteLibre")(e.target.value)} placeholder="Ex : 1 verre de vin le soir, bière le week-end…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
             <Field label="Produits ultra-transformés"><RadioGroup options={["Jamais", "1 à 2 fois par semaine", "3 à 4 fois par semaine", "Presque tous les jours", "Tous les jours"]} value={form.prodUltraTransforme} onChange={set("prodUltraTransforme")} /></Field>
             <SectionTitle>Macronutriments & Hydratation</SectionTitle>
             <Scale label="Consommation de sucre (1 = très peu, 10 = beaucoup)" value={form.consommationSucre} onChange={set("consommationSucre")} />
@@ -877,6 +919,66 @@ export default function Anamnese({ user, onDone, readonly = false, existingData 
         )}
 
         {etape === 10 && (
+          <div>
+            <SectionTitle>Histoire infectieuse & Terrain microbien</SectionTitle>
+            <p style={{ color: C.textMid, fontSize: 13, marginBottom: 18, lineHeight: 1.7 }}>Ces informations sont importantes pour comprendre ton terrain immunitaire. Réponds du mieux que tu peux — "Je ne sais pas" est toujours une option valide.</p>
+
+            <SectionTitle>Virus</SectionTitle>
+            <Field label="EBV / Mononucléose (virus d'Epstein-Barr)">
+              <RadioInline options={["Oui, diagnostiqué(e)", "Oui, suspecté(e)", "Non", "Je ne sais pas"]} value={form.infect_ebv} onChange={set("infect_ebv")} />
+            </Field>
+            {(form.infect_ebv === "Oui, diagnostiqué(e)" || form.infect_ebv === "Oui, suspecté(e)") && (
+              <Field label="Date approximative et suivi ?"><input value={form.infect_ebv_date||""} onChange={e=>set("infect_ebv_date")(e.target.value)} placeholder="Ex : 2018, traitement repos…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>
+            )}
+            <Field label="CMV (Cytomégalovirus)">
+              <RadioInline options={["Oui, diagnostiqué(e)", "Non", "Je ne sais pas"]} value={form.infect_cmv} onChange={set("infect_cmv")} />
+            </Field>
+            <Field label="Herpès récurrent (HSV1 labial ou HSV2 génital)">
+              <RadioInline options={["Oui", "Non", "Je préfère ne pas répondre"]} value={form.infect_herpes} onChange={set("infect_herpes")} />
+            </Field>
+            {form.infect_herpes === "Oui" && <Field label="Fréquence des poussées"><input value={form.infect_herpes_freq||""} onChange={e=>set("infect_herpes_freq")(e.target.value)} placeholder="Ex : 3-4 fois par an, sous stress…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
+            <Field label="Covid long (symptômes persistants après Covid)">
+              <RadioInline options={["Oui", "Non", "Je ne sais pas"]} value={form.infect_covidLong} onChange={set("infect_covidLong")} />
+            </Field>
+            {form.infect_covidLong === "Oui" && <Field label="Symptômes persistants"><Textarea value={form.infect_covidLong_symptomes||""} onChange={set("infect_covidLong_symptomes")} placeholder="Ex : fatigue, brouillard mental, essoufflement…" rows={2} /></Field>}
+
+            <SectionTitle>Bactéries & Parasites</SectionTitle>
+            <Field label="Maladie de Lyme (borréliose)">
+              <RadioInline options={["Oui, diagnostiqué(e) et traité(e)", "Oui, suspecté(e)", "Non", "Je ne sais pas"]} value={form.infect_lyme} onChange={set("infect_lyme")} />
+            </Field>
+            {(form.infect_lyme === "Oui, diagnostiqué(e) et traité(e)" || form.infect_lyme === "Oui, suspecté(e)") && <Field label="Traitement reçu ?"><input value={form.infect_lyme_traitement||""} onChange={e=>set("infect_lyme_traitement")(e.target.value)} placeholder="Ex : antibiotiques 3 semaines en 2020…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
+            <Field label="Helicobacter pylori">
+              <RadioInline options={["Oui, diagnostiqué(e) et traité(e)", "Oui, diagnostiqué(e) non traité(e)", "Non", "Je ne sais pas"]} value={form.infect_helico} onChange={set("infect_helico")} />
+            </Field>
+            <Field label="Parasitose intestinale (oxyures, giardia, autres…)">
+              <RadioInline options={["Oui", "Non", "Je ne sais pas", "Je préfère ne pas répondre"]} value={form.infect_parasites} onChange={set("infect_parasites")} />
+            </Field>
+            {form.infect_parasites === "Oui" && <Field label="Lequel / traitement reçu ?"><input value={form.infect_parasites_lequel||""} onChange={e=>set("infect_parasites_lequel")(e.target.value)} placeholder="Ex : giardia 2019, traitement Flagyl…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
+            <Field label="Candidose récurrente (vaginale, buccale, cutanée, intestinale…)">
+              <RadioInline options={["Oui", "Non", "Je ne sais pas"]} value={form.infect_candidose} onChange={set("infect_candidose")} />
+            </Field>
+            {form.infect_candidose === "Oui" && <Field label="Localisation et fréquence"><input value={form.infect_candidose_localisation||""} onChange={e=>set("infect_candidose_localisation")(e.target.value)} placeholder="Ex : vaginale plusieurs fois par an, traitement local…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>}
+
+            <SectionTitle>Antibiothérapies</SectionTitle>
+            <Field label="Nombre approximatif de cures d'antibiotiques sur toute ta vie">
+              <RadioInline options={["1 à 3", "4 à 10", "Plus de 10", "Je ne sais pas"]} value={form.infect_antibio_total} onChange={set("infect_antibio_total")} />
+            </Field>
+            <Field label="Date de la dernière cure d'antibiotiques"><input value={form.infect_antibio_derniere||""} onChange={e=>set("infect_antibio_derniere")(e.target.value)} placeholder="Ex : mars 2024, sinusite…" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>
+            <Field label="Molécule si connue (ex : amoxicilline, clarithromycine…)"><input value={form.infect_antibio_molecule||""} onChange={e=>set("infect_antibio_molecule")(e.target.value)} placeholder="Si tu ne sais pas, laisse vide" style={{width:"100%",background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:14,fontFamily:"DM Sans, sans-serif",outline:"none",boxSizing:"border-box"}} /></Field>
+
+            <SectionTitle>IST & Dépistage (optionnel)</SectionTitle>
+            <p style={{ color: C.textDim, fontSize: 12, marginBottom: 12, lineHeight: 1.6 }}>Ces questions sont totalement optionnelles. Elles m'aident à avoir un tableau de bord complet de ton terrain immunitaire.</p>
+            <Field label="As-tu eu des IST dans tes antécédents ?">
+              <RadioInline options={["Oui", "Non", "Je préfère ne pas répondre"]} value={form.infect_ist} onChange={set("infect_ist")} />
+            </Field>
+            <Field label="Dépistage VIH récent (moins d'un an) ?">
+              <RadioInline options={["Oui", "Non", "Je préfère ne pas répondre"]} value={form.infect_vih} onChange={set("infect_vih")} />
+            </Field>
+            <NavButtons />
+          </div>
+        )}
+
+        {etape === 11 && (
           <div>
             <SectionTitle>Vision & Motivation</SectionTitle>
             <Field label="Comment tu te vois dans 6 mois si tout se passe bien ?"><Textarea value={form.visionDans6Mois} onChange={set("visionDans6Mois")} placeholder="Décris ton idéal santé dans 6 mois..." rows={3} /></Field>
