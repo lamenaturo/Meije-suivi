@@ -272,7 +272,7 @@ function QuestDomEstroFemme({ scores, setScores }) {
     { key: "de_pilule", label: "Contraception hormonale longue durée (> 5 ans)", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 9, "Suspicion modérée — dosage hormonal recommandé", "Suspicion forte — bilan hormonal complet"));
+  const interp = getInterp(score, [4, 9, "Suspicion modérée — dosage hormonal recommandé", "Suspicion forte — bilan hormonal complet"]);
   interp.bilans = score < 4 ? "" : score < 9 ? "Dosage E2 + progestérone J21 + prolactine" : "Bilan complet : E2, progestérone, LH, FSH, prolactine, SHBG";
   return (
     <QuestCard title="Dominance œstrogénique" icon="🌊" score={score} max={15} interp={interp}>
@@ -295,7 +295,7 @@ function QuestDefProgeste({ scores, setScores }) {
     { key: "dp_brutal", label: "Règles qui arrivent brutalement sans transition", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 8, "Suspicion modérée — dosage progestérone J21", "Suspicion forte — bilan complet + consultation"));
+  const interp = getInterp(score, [4, 8, "Suspicion modérée — dosage progestérone J21", "Suspicion forte — bilan complet + consultation"]);
   interp.bilans = score < 4 ? "" : score < 8 ? "Dosage progestérone J21 + courbe de température" : "Bilan complet : progestérone J21, LH, FSH, E2 + consultation";
   return (
     <QuestCard title="Déficit en progestérone" icon="🌙" score={score} max={13} interp={interp}>
@@ -318,7 +318,7 @@ function QuestDefAndroFemme({ scores, setScores }) {
     { key: "da_pilule", label: "Pilule combinée en cours ou arrêt récent (< 1 an)", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 8, "Suspicion modérée — dosage testostérone libre + DHEA-S", "Suspicion forte — bilan androgènes complet"));
+  const interp = getInterp(score, [4, 8, "Suspicion modérée — dosage testostérone libre + DHEA-S", "Suspicion forte — bilan androgènes complet"]);
   interp.bilans = score < 4 ? "" : score < 8 ? "Dosage testostérone libre, DHEA-S, SHBG" : "Bilan androgènes complet : testostérone totale + libre, DHEA-S, SHBG, delta-4-androstènedione";
   return (
     <QuestCard title="Déficit en androgènes (femme)" icon="⚡" score={score} max={12} interp={interp}>
@@ -343,7 +343,7 @@ function QuestDefTesto({ scores, setScores }) {
     { key: "dt_bouffees", label: "Bouffées de chaleur (homme)", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 9, "Suspicion modérée — dosage testostérone recommandé", "Suspicion forte — bilan hormonal complet homme"));
+  const interp = getInterp(score, [4, 9, "Suspicion modérée — dosage testostérone recommandé", "Suspicion forte — bilan hormonal complet homme"]);
   interp.bilans = score < 4 ? "" : score < 9 ? "Dosage testostérone totale + SHBG (matin, à jeun)" : "Bilan hormonal complet : testostérone totale + libre, SHBG, LH, FSH, prolactine, E2";
   return (
     <QuestCard title="Déficit en testostérone" icon="💪" score={score} max={14} interp={interp}>
@@ -367,7 +367,7 @@ function QuestDomEstroHomme({ scores, setScores }) {
     { key: "deh_surpoids", label: "Surpoids / obésité abdominale", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 8, "Suspicion modérée — ratio testostérone / estradiol", "Suspicion forte — bilan hormonal complet"));
+  const interp = getInterp(score, [4, 8, "Suspicion modérée — ratio testostérone / estradiol", "Suspicion forte — bilan hormonal complet"]);
   interp.bilans = score < 4 ? "" : score < 8 ? "Dosage estradiol + testostérone + SHBG" : "Bilan complet : E2, testostérone totale + libre, SHBG, prolactine, LH, FSH";
   return (
     <QuestCard title="Dominance œstrogénique (homme)" icon="⚖️" score={score} max={12} interp={interp}>
@@ -393,7 +393,7 @@ function QuestFatigueSurr({ scores, setScores }) {
     { key: "fs_emotionnel", label: "Sensation d'être à plat après un effort émotionnel", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [5, 10, "Suspicion modérée — cortisol salivaire recommandé", "Suspicion forte — bilan surrénalien complet"));
+  const interp = getInterp(score, [5, 10, "Suspicion modérée — cortisol salivaire recommandé", "Suspicion forte — bilan surrénalien complet"]);
   interp.bilans = score < 5 ? "" : score < 10 ? "Cortisol salivaire x4/jour + DHEA-S" : "Bilan surrénalien complet : cortisol x4, DHEA-S, test ACTH, NFS";
   return (
     <QuestCard title="Fatigue surrénalienne" icon="🔋" score={score} max={15} interp={interp}>
@@ -418,7 +418,7 @@ function QuestResistInsul({ scores, setScores }) {
     { key: "ri_atcd", label: "Antécédents familiaux de diabète type 2", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [5, 11, "Suspicion modérée — glycémie à jeun + insulinémie", "Suspicion forte — bilan métabolique complet"));
+  const interp = getInterp(score, [5, 11, "Suspicion modérée — glycémie à jeun + insulinémie", "Suspicion forte — bilan métabolique complet"]);
   interp.bilans = score < 5 ? "" : score < 11 ? "Glycémie à jeun + insulinémie à jeun + HOMA-IR" : "Bilan complet : glycémie + insuline + HOMA-IR + HbA1c + bilan lipidique";
   return (
     <QuestCard title="Résistance à l'insuline" icon="🍬" score={score} max={18} interp={interp}>
@@ -453,7 +453,7 @@ function QuestSibo({ scores, setScores, form }) {
   const scoreItems = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
   const score = scoreItems + antibioPoints + antibioRecentePoints;
   const max = 17 + 4;
-  const interp = getInterp(score, [5, 11, "Suspicion modérée — test respiratoire recommandé", "Suspicion forte — consultation gastro + test SIBO"));
+  const interp = getInterp(score, [5, 11, "Suspicion modérée — test respiratoire recommandé", "Suspicion forte — consultation gastro + test SIBO"]);
   interp.bilans = score < 5 ? "" : score < 11 ? "Test respiratoire au lactulose ou glucose" : "Consultation gastro + test SIBO + analyse de selles (microbiote)";
   return (
     <QuestCard title="SIBO / Dysbiose intestinale" icon="🦠" score={score} max={max} interp={interp}>
@@ -489,7 +489,7 @@ function QuestHyperPerm({ scores, setScores }) {
     { key: "hp_candidose", label: "Candidose récurrente", pts: 2 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 8, "Suspicion modérée — zonuline + calprotectine", "Suspicion forte — bilan intestinal complet"));
+  const interp = getInterp(score, [4, 8, "Suspicion modérée — zonuline + calprotectine", "Suspicion forte — bilan intestinal complet"]);
   interp.bilans = score < 4 ? "" : score < 8 ? "Zonuline sérique + calprotectine fécale" : "Bilan intestinal complet : zonuline, calprotectine, LPS, analyse microbiote";
   return (
     <QuestCard title="Hyperperméabilité intestinale" icon="🔓" score={score} max={13} interp={interp}>
@@ -514,7 +514,7 @@ function QuestDefFer({ scores, setScores }) {
     { key: "df_regime", label: "Régime végétarien / vegan", pts: 1 },
   ];
   const score = items.reduce((s, i) => s + (scores[i.key] ? i.pts : 0), 0);
-  const interp = getInterp(score, [4, 9, "Suspicion modérée — NFS + ferritine recommandés", "Suspicion forte — bilan martial complet urgent"));
+  const interp = getInterp(score, [4, 9, "Suspicion modérée — NFS + ferritine recommandés", "Suspicion forte — bilan martial complet urgent"]);
   interp.bilans = score < 4 ? "" : score < 9 ? "NFS + ferritine + fer sérique + transferrine" : "Bilan martial urgent : NFS, ferritine, fer sérique, transferrine, saturation transferrine, réticulocytes";
   return (
     <QuestCard title="Déficit en fer / Anémie" icon="🩸" score={score} max={15} interp={interp}>
